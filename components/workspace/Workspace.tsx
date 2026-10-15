@@ -1,98 +1,217 @@
 "use client";
 
+import { useMutation, useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import Link from "next/link";
-import { useState } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type RefObject,
+} from "react";
 import { useStudentViewer } from "@/components/auth/ViewerContext";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { CodeView } from "@/components/ui/CodeView";
-import { AssignmentTypeTag, Pill } from "@/components/ui/Pill";
-import { PreviewBanner } from "@/components/ui/PreviewBanner";
+import { AssignmentTypeTag } from "@/components/ui/Pill";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { TabPanel, Tabs } from "@/components/ui/Tabs";
+import { api } from "@/convex/_generated/api";
+import {
+  ALLOWED_EXTENSIONS,
+  byteLength,
+  fileNameProblem,
+  fileSizeProblem,
+  MAX_FILE_BYTES,
+  MAX_FILES,
+  MAX_WORKSPACE_BYTES,
+  UPLOAD_ACCEPT,
+} from "@/convex/lib/workFiles";
 import { cn } from "@/lib/cn";
-import { FIXTURE_TIME_ZONE as TZ, workspaceFixture } from "@/lib/fixtures";
-import { formatRelative, formatTime, formatWeekdayDateTime } from "@/lib/format";
+import { errorMessage } from "@/lib/errors";
+import { formatWeekdayDateTime } from "@/lib/format";
 import { renderInlineMarkdown } from "@/lib/inlineMarkdown";
 import { useNow } from "@/lib/useNow";
-import { CheckResults } from "./CheckResults";
+import type { WorkspaceSync } from "@/lib/workspaceSync";
+import { CodeEditor, type CodeEditorHandle } from "./CodeEditor";
+import { SaveStatusPill } from "./SaveStatusPill";
+import { ConnectionWatcher, useLeaveGuard, useWorkspaceSync } from "./useWorkspaceSync";
+import { VersionsPanel, VersionView } from "./VersionsPanel";
 
 type PanelTab = "task" | "files" | "versions";
+type WorkspaceData = NonNullable<FunctionReturnType<typeof api.workspaces.get>>;
+type LoadedWorkspace = WorkspaceData & { workspace: NonNullable<WorkspaceData["workspace"]> };
+type Message = { tone: "info" | "error"; text: string };
 
-const PREVIEW_HINT = "Not connected yet (Phase 3–6).";
+const LATER = "Not available yet.";
 
 /**
- * 4d. Guided assignment workspace: task beside a Python editor, with output,
- * check results, help/assistance state and turn-in. Renders sample data until
- * the editor, runtime and persistence phases land.
+ * 4d. Assignment workspace: the task beside a Python editor whose files save
+ * to Convex as the student types. Opening an assignment the first time copies
+ * its published starter files. Run, Check, Turn in and Help come later.
  */
 export function Workspace({ assignmentId }: { assignmentId: string }) {
+  const data = useQuery(api.workspaces.get, { assignmentId });
+  const open = useMutation(api.workspaces.open);
+  const [openError, setOpenError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const needsOpen = data !== undefined && data !== null && data.workspace === null;
+
+  useEffect(() => {
+    if (!needsOpen) return;
+    let cancelled = false;
+    open({ assignmentId }).catch((error: unknown) => {
+      if (!cancelled) setOpenError(errorMessage(error, "Couldn’t open your files. Try again."));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsOpen, assignmentId, open, attempt]);
+
+  if (data === undefined) return <LoadingState label="Opening your workspace…" />;
+  if (data === null) {
+    return (
+      <main className="mx-auto max-w-xl p-6">
+        <EmptyState title="This assignment isn’t available">
+          It may not be published yet, or it belongs to another curriculum.{" "}
+          <Link href="/learn">Back to your learning home</Link>
+        </EmptyState>
+      </main>
+    );
+  }
+  if (openError !== null) {
+    return (
+      <main className="mx-auto max-w-xl p-6">
+        <ErrorState
+          title="Your files didn’t open."
+          onRetry={() => {
+            setOpenError(null);
+            setAttempt((n) => n + 1);
+          }}
+        >
+          {openError}
+        </ErrorState>
+      </main>
+    );
+  }
+  if (data.workspace === null) return <LoadingState label="Setting up your files…" />;
+  return <WorkspaceScreen key={data.workspace._id} data={data as LoadedWorkspace} />;
+}
+
+function WorkspaceScreen({ data }: { data: LoadedWorkspace }) {
   const viewer = useStudentViewer();
-  const data = workspaceFixture;
-  const now = useNow(1000);
+  const { assignment, day, workspace, timeZone, turnIn } = data;
+  const { sync, snapshot } = useWorkspaceSync(workspace);
+  const guardLeave = useLeaveGuard(sync);
+  const restoreVersion = useMutation(api.workspaces.restore);
+  const editor = useRef<CodeEditorHandle>(null);
+  const now = useNow(60_000);
+  // Next keeps a left workspace mounted (hidden), so element ids must be per screen.
+  const tabsId = `ws${useId()}`;
+
   const [tab, setTab] = useState<PanelTab>("task");
-  const [activeFile, setActiveFile] = useState(data.files[0]!.name);
-  const [outputCleared, setOutputCleared] = useState(false);
-  const file = data.files.find((f) => f.name === activeFile) ?? data.files[0]!;
+  const [activeFile, setActiveFile] = useState(snapshot.files[0]?.name ?? "main.py");
+  const [inspecting, setInspecting] = useState<number | null>(null);
+  const [restoring, setRestoring] = useState(false);
+  const [message, setMessage] = useState<Message | null>(null);
+
+  // Merge server changes (a restore, another tab) into the editor.
+  useEffect(() => {
+    editor.current?.applyRemote(sync.applyServer(workspace.files, workspace.updatedAt));
+  }, [sync, workspace.files, workspace.updatedAt]);
+
+  const fileNames = snapshot.files.map((f) => f.name);
+  const shownFile = fileNames.includes(activeFile) ? activeFile : (fileNames[0] ?? "main.py");
+  const offline = snapshot.status.kind === "offline";
   const firstName = viewer.name.split(" ")[0] ?? viewer.name;
-  const helpMinutes = Math.max(1, Math.round((now - data.help.requestedAt) / 60_000));
+  const dayHref = day.inCurrentCurriculum ? `/learn/days/${day._id}` : "/learn/work";
+
+  const showFile = (name: string) => {
+    setInspecting(null);
+    setActiveFile(name);
+  };
+
+  const restore = async (number: number) => {
+    const ok = window.confirm(
+      `Restore v${number}? Your current files are kept in Versions, so you can switch back.`,
+    );
+    if (!ok) return;
+    setRestoring(true);
+    setMessage(null);
+    try {
+      try {
+        await sync.flush();
+      } catch {
+        setMessage({ tone: "error", text: "Your latest changes haven’t saved, so nothing was restored." });
+        return;
+      }
+      const result = await restoreVersion({ workspaceId: workspace._id, number });
+      setInspecting(null);
+      setMessage({ tone: "info", text: `Restored v${number}. It’s now v${result.number}.` });
+    } catch (error) {
+      setMessage({ tone: "error", text: errorMessage(error, "Couldn’t restore that version. Try again.") });
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   return (
-    <div className="flex h-dvh min-h-[600px] flex-col bg-bg" data-assignment-id={assignmentId}>
+    <div className="flex h-dvh min-h-[600px] flex-col bg-bg">
+      <ConnectionWatcher sync={sync} />
       <header className="flex h-[62px] flex-none items-center gap-3 px-5">
         <Link
           href="/learn"
+          onNavigate={guardLeave("/learn")}
           className="text-xl leading-none font-extrabold tracking-[-.03em] text-ink no-underline"
         >
           CodeCS
         </Link>
         <span aria-hidden="true" className="mx-1 h-[22px] w-px bg-ln" />
-        <Link href="/learn" className="text-[15px] font-semibold text-ink2 no-underline">
-          {data.assignment.dayLabel}
+        <Link
+          href={dayHref}
+          onNavigate={guardLeave(dayHref)}
+          className="text-[15px] font-semibold whitespace-nowrap text-ink2 no-underline"
+        >
+          Day {day.order}: {day.topic}
         </Link>
         <span aria-hidden="true" className="text-bd">
           /
         </span>
-        <h1 className="m-0 text-[21px] leading-none font-extrabold tracking-[-.025em]">
-          {data.assignment.title}
+        <h1 className="m-0 truncate text-[21px] leading-none font-extrabold tracking-[-.025em]">
+          {assignment.title}
         </h1>
-        <AssignmentTypeTag type={data.assignment.type} />
+        <span className="flex items-center">
+          <AssignmentTypeTag type={assignment.type} />
+        </span>
 
         <div className="ml-auto flex items-center gap-2">
-          <Pill tone="mint" className="h-[30px] px-2.5 text-[13px] font-semibold" >
-            <span role="status">✓ Saved {formatRelative(data.save.savedAt, now, TZ)}</span>
-          </Pill>
-          <span
-            role="status"
-            className="inline-flex h-[30px] items-center gap-2 rounded-full bg-vio-s pr-3 pl-1 text-[13px] font-bold text-vio-i"
-          >
-            <Avatar name={data.teacher.name} tone="violet" size={22} className="text-[8px]" />
-            {data.teacher.name} joined
-          </span>
-          <button
-            type="button"
-            aria-pressed="true"
-            disabled
-            title={PREVIEW_HINT}
-            className="inline-flex h-9 items-center rounded-[10px] border-0 bg-vio px-3.5 text-sm font-bold whitespace-nowrap text-on-vio"
-          >
-            Help requested · {helpMinutes} min
-          </button>
-          <ButtonLink href={data.assignment.slidesUrl} external variant="ghost" size="md">
-            Slides ↗
-          </ButtonLink>
+          <SaveStatusPill
+            status={snapshot.status}
+            timeZone={timeZone}
+            onRetry={() => void sync.flush().catch(() => {})}
+          />
+          <Button variant="secondary" size="md" disabled title={LATER}>
+            Ask for help
+          </Button>
+          {day.slidesUrl && (
+            <ButtonLink href={day.slidesUrl} external variant="ghost" size="md">
+              Slides ↗
+            </ButtonLink>
+          )}
           <span className="ml-1 flex items-center gap-2">
             <Avatar name={viewer.name} size={30} className="text-[11px]" />
             <b className="text-sm font-bold">{firstName}</b>
           </span>
         </div>
       </header>
-      <PreviewBanner phase="Phases 3–6" className="mx-3 mb-2" />
 
       <div className="grid min-h-0 flex-1 grid-cols-[372px_minmax(0,1fr)] gap-3 px-3 pb-3">
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-[20px] bg-sf">
           <Tabs
             label="Assignment panels"
-            idPrefix="ws"
+            idPrefix={tabsId}
             value={tab}
             onChange={setTab}
             className="flex-none px-2.5 pt-2.5"
@@ -102,7 +221,8 @@ export function Workspace({ assignmentId }: { assignmentId: string }) {
                 value: "files",
                 label: (
                   <>
-                    Files <span className="font-mono text-xs font-medium text-ink3">{data.files.length}</span>
+                    Files{" "}
+                    <span className="font-mono text-xs font-medium text-ink3">{fileNames.length}</span>
                   </>
                 ),
               },
@@ -110,86 +230,42 @@ export function Workspace({ assignmentId }: { assignmentId: string }) {
             ]}
           />
           <TabPanel
-            idPrefix="ws"
+            idPrefix={tabsId}
             value={tab}
             className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-5 py-[18px]"
           >
-            {tab === "task" && (
-              <>
-                <p className="m-0 text-base leading-[1.55] text-pretty">
-                  {renderInlineMarkdown(data.assignment.instructions)}
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  <b className="text-[13px] font-bold">Expected output</b>
-                  <pre className="m-0 rounded-[14px] bg-bg px-3.5 py-3 font-mono text-sm leading-normal font-medium">
-                    {data.assignment.expectedOutput}
-                  </pre>
-                  <span className="text-[12.5px] text-ink3">
-                    Spaces and line breaks don’t affect the check.
-                  </span>
-                </div>
-              </>
-            )}
+            {tab === "task" && <TaskPanel assignment={assignment} />}
             {tab === "files" && (
-              <ul className="m-0 flex list-none flex-col gap-1 p-0">
-                {data.files.map((f) => (
-                  <li key={f.name}>
-                    <button
-                      type="button"
-                      onClick={() => setActiveFile(f.name)}
-                      className={cn(
-                        "flex w-full cursor-pointer items-center justify-between rounded-[10px] border-0 px-3 py-2 text-left font-mono text-sm",
-                        f.name === activeFile ? "bg-bg font-semibold" : "bg-transparent hover:bg-sf2",
-                      )}
-                    >
-                      {f.name}
-                      <span className="font-sans text-xs text-ink3">
-                        {f.content.split("\n").length - 1} lines
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <FilesPanel sync={sync} files={snapshot.files} shown={inspecting === null ? shownFile : null} onShow={showFile} />
             )}
             {tab === "versions" && (
-              <ol className="m-0 flex list-none flex-col gap-1 p-0">
-                {data.versions.map((version) => (
-                  <li
-                    key={version.number}
-                    className="flex items-center justify-between rounded-[10px] bg-bg px-3 py-2 text-sm"
-                  >
-                    <span>
-                      <b className="font-bold">v{version.number}</b>{" "}
-                      <span className="text-ink3">
-                        · {formatTime(version.at, TZ)} · {version.by}
-                      </span>
-                    </span>
-                    <Button size="sm" variant="ghost" disabled title={PREVIEW_HINT}>
-                      Restore
-                    </Button>
-                  </li>
-                ))}
-              </ol>
+              <VersionsPanel
+                workspaceId={workspace._id}
+                timeZone={timeZone}
+                inspecting={inspecting}
+                onInspect={setInspecting}
+                onRestore={(n) => void restore(n)}
+                restoreDisabled={restoring || offline}
+              />
             )}
           </TabPanel>
 
           <div className="m-2.5 mt-0 flex flex-none flex-col gap-2.5 rounded-2xl bg-bg px-4 pt-3.5 pb-4">
-            <div className="flex items-baseline justify-between">
-              <b className="font-bold">{data.turnIn.submitted ? "Turned in" : "Not turned in"}</b>
+            <div className="flex items-baseline justify-between gap-2">
+              <b className="font-bold">
+                {turnIn.attempts > 0 ? `Turned in · attempt ${turnIn.attempts}` : "Not turned in"}
+              </b>
               <span className="text-[13px] text-ink3">
-                Closes {formatWeekdayDateTime(data.turnIn.closesAt, TZ)}
+                {turnIn.closesAt === null
+                  ? "No turn-in date yet"
+                  : `${turnIn.closesAt > now ? "Closes" : "Closed"} ${formatWeekdayDateTime(turnIn.closesAt, timeZone)}`}
               </span>
             </div>
-            <Button
-              variant="primary"
-              className="h-[46px] w-full rounded-xl text-base"
-              disabled
-              title={PREVIEW_HINT}
-            >
+            <Button variant="primary" className="h-[46px] w-full rounded-xl text-base" disabled title={LATER}>
               Turn in
             </Button>
             <span className="text-[12.5px] text-ink3">
-              Sends your last saved version (v{data.turnIn.latestVersion}). You can keep editing after.
+              Turning in isn’t available yet. Your files save as you type.
             </span>
           </div>
         </aside>
@@ -198,105 +274,408 @@ export function Workspace({ assignmentId }: { assignmentId: string }) {
           aria-label="Python editor"
           className="scheme-dark flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[20px] bg-code-bg text-code-ink"
         >
-          <div className="flex h-[52px] flex-none items-center gap-1.5 bg-code-bar pr-2.5 pl-3">
-            {data.files.map((f) => (
-              <button
-                key={f.name}
-                type="button"
-                onClick={() => setActiveFile(f.name)}
-                aria-pressed={f.name === activeFile}
-                className={cn(
-                  "flex h-[34px] cursor-pointer items-center rounded-[9px] border-0 px-3.5 font-mono text-[13px]",
-                  f.name === activeFile
-                    ? "bg-code-bg font-semibold text-code-ink"
-                    : "bg-transparent font-medium text-ink3",
-                )}
-              >
-                {f.name}
-              </button>
-            ))}
-            <button
-              type="button"
-              aria-label="New file"
-              disabled
-              title={PREVIEW_HINT}
-              className="size-[34px] rounded-[9px] border-0 bg-transparent text-lg text-ink3"
-            >
-              +
-            </button>
-            <span className="ml-auto flex gap-0.5">
-              {["Upload", "Download", "Packages"].map((label) => (
-                <Button key={label} variant="ghost" size="sm" disabled title={PREVIEW_HINT}>
-                  {label}
-                </Button>
-              ))}
-            </span>
-            <span aria-hidden="true" className="mx-1.5 h-[22px] w-px bg-ln" />
-            <span role="status" className="text-[13px] font-semibold text-mint-i">
-              ● Python ready
-            </span>
-            <Button variant="primary" size="md" className="ml-1.5 px-[18px]" disabled title={PREVIEW_HINT}>
-              ▶ Run
-            </Button>
-            <Button variant="secondary" size="md" disabled>
-              ■ Stop
-            </Button>
-          </div>
-
-          <CodeView
-            code={file.content}
-            label={`${file.name} (read-only preview)`}
-            className="min-h-0 flex-1 py-4 text-[15px] leading-[26px]"
-            highlightLines={file.name === "main.py" ? [data.teacher.cursorLine] : []}
-            cursors={
-              file.name === "main.py"
-                ? [{ line: data.teacher.cursorLine, label: data.teacher.name, tone: "teacher" }]
-                : []
-            }
+          <EditorBar
+            sync={sync}
+            editor={editor}
+            files={snapshot.files}
+            shownFile={inspecting === null ? shownFile : null}
+            onShow={showFile}
+            onMessage={setMessage}
           />
+
+          <Notices
+            message={message}
+            notice={snapshot.notice}
+            failure={snapshot.status.kind === "failed" ? snapshot.status.message : null}
+            onDismissMessage={() => setMessage(null)}
+            onDismissNotice={() => sync.dismissNotice()}
+            onRetry={() => void sync.flush().catch(() => {})}
+          />
+
+          {inspecting !== null && (
+            <VersionView
+              key={inspecting}
+              workspaceId={workspace._id}
+              number={inspecting}
+              timeZone={timeZone}
+              onClose={() => setInspecting(null)}
+              onRestore={(n) => void restore(n)}
+              restoreDisabled={restoring || offline}
+            />
+          )}
+          <div className={cn("min-h-0 flex-1", inspecting !== null && "hidden")}>
+            <CodeEditor
+              ref={editor}
+              fileName={shownFile}
+              readContent={(name) => sync.content(name)}
+              onChange={(name, content) => sync.edit(name, content)}
+              readOnly={restoring}
+            />
+          </div>
 
           <div className="grid h-[232px] flex-none grid-cols-2 bg-code-bar">
             <section aria-label="Output" className="flex min-w-0 flex-col border-r border-ln">
               <div className="flex h-[42px] flex-none items-center gap-2.5 px-4">
                 <b className="text-sm font-bold">Output</b>
-                <Pill className="px-2.5 font-semibold">{data.run.errors} errors</Pill>
-                <button
-                  type="button"
-                  onClick={() => setOutputCleared(true)}
-                  className="ml-auto cursor-pointer border-0 bg-transparent text-[13px] font-semibold text-ink3 hover:text-ink"
-                >
-                  Clear
-                </button>
               </div>
-              <pre
-                aria-live="off"
-                className="m-0 flex-1 overflow-auto px-4 font-mono text-sm leading-[1.45] font-medium text-code-ink"
-              >
-                {outputCleared ? "" : data.run.output}
-              </pre>
-              <div className="flex-none px-4 pt-2 pb-2.5 text-[12.5px] text-ink3">
-                Finished in {data.run.seconds}s · run by {data.run.by} · v{data.run.version}
-              </div>
+              <p className="m-0 flex-1 px-4 text-sm text-ink3">
+                Running Python isn’t available yet. When it is, your program’s output shows here.
+              </p>
             </section>
             <section aria-label="Check" className="flex min-w-0 flex-col">
               <div className="flex h-[42px] flex-none items-center gap-2.5 px-4">
                 <b className="text-sm font-bold">Check</b>
-                <span className="text-[13px] text-ink3">for v{data.check.version} · just now</span>
-                <Button size="sm" variant="secondary" className="ml-auto h-7" disabled title={PREVIEW_HINT}>
-                  Run check
-                </Button>
+                {assignment.type === "guided" && (
+                  <Button size="sm" variant="secondary" className="ml-auto h-7" disabled title={LATER}>
+                    Run check
+                  </Button>
+                )}
               </div>
-              <div className="flex flex-1 flex-col px-4 pt-0.5 pb-3">
-                <CheckResults
-                  outcome={data.check.outcome}
-                  parts={data.check.parts}
-                  partialMin={data.check.partialMin}
-                />
-              </div>
+              <p className="m-0 flex-1 px-4 text-sm text-ink3">
+                {assignment.type === "guided"
+                  ? "Checks will show which parts of the task your program meets. Not available yet."
+                  : "Open-ended: there’s no automatic check. Your teacher reviews your work."}
+              </p>
             </section>
           </div>
         </section>
       </div>
+    </div>
+  );
+}
+
+function TaskPanel({ assignment }: { assignment: LoadedWorkspace["assignment"] }) {
+  return (
+    <>
+      <p className="m-0 text-base leading-[1.55] text-pretty whitespace-pre-line">
+        {renderInlineMarkdown(assignment.instructions)}
+      </p>
+      {assignment.expectedOutput !== null && (
+        <div className="flex flex-col gap-1.5">
+          <b className="text-[13px] font-bold">Expected output</b>
+          <pre className="m-0 overflow-auto rounded-[14px] bg-bg px-3.5 py-3 font-mono text-sm leading-normal font-medium">
+            {assignment.expectedOutput}
+          </pre>
+          {assignment.type === "guided" && (
+            <span className="text-[12.5px] text-ink3">
+              Spaces and line breaks don’t affect the check.
+            </span>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+function FilesPanel({
+  sync,
+  files,
+  shown,
+  onShow,
+}: {
+  sync: WorkspaceSync;
+  files: Array<{ name: string; dirty: boolean }>;
+  shown: string | null;
+  onShow: (name: string) => void;
+}) {
+  return (
+    <ul className="m-0 flex list-none flex-col gap-1 p-0">
+      {files.map((f) => {
+        const lines = (sync.content(f.name) ?? "").replace(/\n$/, "").split("\n").length;
+        return (
+          <li key={f.name}>
+            <button
+              type="button"
+              onClick={() => onShow(f.name)}
+              aria-current={f.name === shown ? "true" : undefined}
+              className={cn(
+                "flex w-full cursor-pointer items-center justify-between gap-2 rounded-[10px] border-0 px-3 py-2 text-left font-mono text-sm",
+                f.name === shown ? "bg-bg font-semibold" : "bg-transparent hover:bg-sf2",
+              )}
+            >
+              <span className="truncate">{f.name}</span>
+              <span className="flex-none font-sans text-xs text-ink3">
+                {f.dirty ? "Not saved yet" : `${lines} ${lines === 1 ? "line" : "lines"}`}
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** File tabs, new file, upload and download, plus the (later) runtime controls. */
+function EditorBar({
+  sync,
+  editor,
+  files,
+  shownFile,
+  onShow,
+  onMessage,
+}: {
+  sync: WorkspaceSync;
+  editor: RefObject<CodeEditorHandle | null>;
+  files: Array<{ name: string; dirty: boolean }>;
+  shownFile: string | null;
+  onShow: (name: string) => void;
+  onMessage: (message: Message | null) => void;
+}) {
+  const [naming, setNaming] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const uploadRef = useRef<HTMLInputElement>(null);
+  const errorId = useId();
+  const names = files.map((f) => f.name);
+
+  const clashOrLimit = (name: string): string | null => {
+    const clash = names.find((n) => n.toLowerCase() === name.toLowerCase());
+    if (clash) return `There is already a file named ${clash}.`;
+    if (names.length >= MAX_FILES) return `A workspace can have at most ${MAX_FILES} files.`;
+    return null;
+  };
+
+  const createFile = (event: FormEvent) => {
+    event.preventDefault();
+    let name = newName.trim();
+    if (name.length > 0 && !name.includes(".")) name += ".py";
+    const problem = fileNameProblem(name) ?? clashOrLimit(name);
+    if (problem !== null) {
+      setNameError(problem);
+      return;
+    }
+    sync.addFile(name, "");
+    setNaming(false);
+    setNewName("");
+    setNameError(null);
+    onShow(name);
+    requestAnimationFrame(() => editor.current?.focus());
+  };
+
+  const upload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const picked = [...(event.target.files ?? [])];
+    event.target.value = "";
+    onMessage(null);
+    let last: string | null = null;
+    for (const file of picked) {
+      const replacing = names.includes(file.name);
+      if (!ALLOWED_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))) {
+        onMessage({
+          tone: "error",
+          text: `${file.name} can’t be added. Upload .py, .txt, .csv or .json files.`,
+        });
+        continue;
+      }
+      const nameProblem = fileNameProblem(file.name);
+      if (nameProblem !== null) {
+        onMessage({ tone: "error", text: `${nameProblem} Rename ${file.name} and upload it again.` });
+        continue;
+      }
+      const problem =
+        (file.size > MAX_FILE_BYTES
+          ? `${file.name} is larger than ${MAX_FILE_BYTES / 1000} KB.`
+          : null) ?? (replacing ? null : clashOrLimit(file.name));
+      if (problem !== null) {
+        onMessage({ tone: "error", text: problem });
+        continue;
+      }
+      const content = await file.text();
+      const sizeProblem = fileSizeProblem(file.name, content);
+      const total =
+        names
+          .filter((n) => n !== file.name)
+          .reduce((sum, n) => sum + byteLength(sync.content(n) ?? ""), 0) + byteLength(content);
+      if (sizeProblem !== null || total > MAX_WORKSPACE_BYTES) {
+        onMessage({
+          tone: "error",
+          text:
+            sizeProblem ??
+            `Uploading ${file.name} would make your files bigger than ${MAX_WORKSPACE_BYTES / 1000} KB together.`,
+        });
+        continue;
+      }
+      if (replacing) {
+        if (!window.confirm(`Replace ${file.name} with the uploaded file?`)) continue;
+        editor.current?.replace(file.name, content);
+      } else {
+        sync.addFile(file.name, content);
+        names.push(file.name);
+      }
+      last = file.name;
+    }
+    if (last !== null) onShow(last);
+  };
+
+  const download = () => {
+    const name = shownFile ?? names[0];
+    if (name === undefined) return;
+    const type = name.endsWith(".json")
+      ? "application/json"
+      : name.endsWith(".csv")
+        ? "text/csv"
+        : "text/plain";
+    const url = URL.createObjectURL(
+      new Blob([sync.content(name) ?? ""], { type: `${type};charset=utf-8` }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
+
+  return (
+    <div className="flex h-[52px] flex-none items-center gap-1.5 bg-code-bar pr-2.5 pl-3">
+      <div role="group" aria-label="Files" className="flex min-w-0 items-center gap-1.5 overflow-x-auto">
+        {files.map((f) => (
+          <button
+            key={f.name}
+            type="button"
+            onClick={() => onShow(f.name)}
+            aria-pressed={f.name === shownFile}
+            title={f.dirty ? `${f.name} (not saved yet)` : f.name}
+            className={cn(
+              "flex h-[34px] flex-none cursor-pointer items-center gap-1.5 rounded-[9px] border-0 px-3.5 font-mono text-[13px]",
+              f.name === shownFile
+                ? "bg-code-bg font-semibold text-code-ink"
+                : "bg-transparent font-medium text-ink3 hover:text-code-ink",
+            )}
+          >
+            {f.name}
+            {f.dirty && (
+              <span aria-hidden="true" className="size-1.5 rounded-full bg-amb" />
+            )}
+          </button>
+        ))}
+      </div>
+      {naming ? (
+        <form onSubmit={createFile} className="relative flex flex-none items-center gap-1">
+          <input
+            autoFocus
+            aria-label="New file name"
+            aria-invalid={nameError !== null}
+            aria-describedby={nameError ? errorId : undefined}
+            value={newName}
+            placeholder="helpers.py"
+            onChange={(e) => {
+              setNewName(e.target.value);
+              setNameError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setNaming(false);
+                setNewName("");
+                setNameError(null);
+              }
+            }}
+            className="h-[30px] w-36 rounded-lg border border-ln bg-code-bg px-2 font-mono text-[13px] text-code-ink"
+          />
+          <Button type="submit" size="sm" variant="secondary" className="h-[30px]">
+            Add
+          </Button>
+          {nameError && (
+            <span
+              id={errorId}
+              role="alert"
+              className="absolute top-[36px] left-0 z-10 w-64 rounded-lg bg-cor-s px-2.5 py-1.5 text-xs font-semibold text-cor-i shadow-card"
+            >
+              {nameError}
+            </span>
+          )}
+        </form>
+      ) : (
+        <button
+          type="button"
+          aria-label="New file"
+          title="New file"
+          onClick={() => setNaming(true)}
+          className="size-[34px] flex-none cursor-pointer rounded-[9px] border-0 bg-transparent text-lg text-ink3 hover:bg-sf2"
+        >
+          +
+        </button>
+      )}
+      <span className="ml-auto flex flex-none gap-0.5">
+        <input
+          ref={uploadRef}
+          type="file"
+          accept={UPLOAD_ACCEPT}
+          multiple
+          hidden
+          onChange={(e) => void upload(e)}
+        />
+        <Button variant="ghost" size="sm" onClick={() => uploadRef.current?.click()} title="Upload .py, .txt, .csv or .json files">
+          Upload
+        </Button>
+        <Button variant="ghost" size="sm" onClick={download} title={`Download ${shownFile ?? "this file"}`}>
+          Download
+        </Button>
+        <Button variant="ghost" size="sm" disabled title={LATER}>
+          Packages
+        </Button>
+      </span>
+      <span aria-hidden="true" className="mx-1.5 h-[22px] w-px flex-none bg-ln" />
+      <span className="flex-none text-[13px] font-semibold text-ink3">○ Python not loaded</span>
+      <Button variant="primary" size="md" className="ml-1.5 px-[18px]" disabled title={LATER}>
+        ▶ Run
+      </Button>
+      <Button variant="secondary" size="md" disabled>
+        ■ Stop
+      </Button>
+    </div>
+  );
+}
+
+function Notices({
+  message,
+  notice,
+  failure,
+  onDismissMessage,
+  onDismissNotice,
+  onRetry,
+}: {
+  message: Message | null;
+  notice: string | null;
+  failure: string | null;
+  onDismissMessage: () => void;
+  onDismissNotice: () => void;
+  onRetry: () => void;
+}) {
+  if (message === null && notice === null && failure === null) return null;
+  const row = "flex flex-none items-center gap-3 px-4 py-2 text-[13px]";
+  const close = "ml-auto cursor-pointer border-0 bg-transparent text-[13px] font-semibold";
+  return (
+    <div className="flex flex-none flex-col">
+      {failure !== null && (
+        <div role="alert" className={cn(row, "bg-cor-s text-cor-i")}>
+          <span>
+            <b className="font-bold">Save failed.</b> {failure} Your changes are still here.
+          </span>
+          <button type="button" onClick={onRetry} className={close}>
+            Retry
+          </button>
+        </div>
+      )}
+      {notice !== null && (
+        <div role="status" className={cn(row, "bg-amb-s text-amb-i")}>
+          <span>{notice}</span>
+          <button type="button" onClick={onDismissNotice} className={close}>
+            Dismiss
+          </button>
+        </div>
+      )}
+      {message !== null && (
+        <div
+          role={message.tone === "error" ? "alert" : "status"}
+          className={cn(row, message.tone === "error" ? "bg-cor-s text-cor-i" : "bg-mint-s text-mint-i")}
+        >
+          <span>{message.text}</span>
+          <button type="button" onClick={onDismissMessage} className={close}>
+            Dismiss
+          </button>
+        </div>
+      )}
     </div>
   );
 }

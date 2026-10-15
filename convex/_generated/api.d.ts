@@ -22,10 +22,12 @@ import type * as lib_errors from "../lib/errors.js";
 import type * as lib_loginCodes from "../lib/loginCodes.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as lib_time from "../lib/time.js";
+import type * as lib_workFiles from "../lib/workFiles.js";
 import type * as seed from "../seed.js";
 import type * as student from "../student.js";
 import type * as students from "../students.js";
 import type * as viewer from "../viewer.js";
+import type * as workspaces from "../workspaces.js";
 
 import type {
   ApiFromModules,
@@ -48,10 +50,12 @@ declare const fullApi: ApiFromModules<{
   "lib/loginCodes": typeof lib_loginCodes;
   "lib/rateLimits": typeof lib_rateLimits;
   "lib/time": typeof lib_time;
+  "lib/workFiles": typeof lib_workFiles;
   seed: typeof seed;
   student: typeof student;
   students: typeof students;
   viewer: typeof viewer;
+  workspaces: typeof workspaces;
 }>;
 
 /**

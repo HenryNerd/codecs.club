@@ -4,10 +4,17 @@
  * CodeCS design tokens, copied from the "CodeCS Basic v2" design
  * (design/CodeCS Basic v2.dc.html). Every color is a light-dark() pair, so the
  * active palette follows `color-scheme`, which [data-theme] pins below.
+ *
+ * The build compiles light-dark() into variables that resolve on the element
+ * where a token is declared, so the tokens are declared again on .scheme-dark;
+ * otherwise a dark editor inside a light page would inherit light colors.
  */
 :root {
   color-scheme: light dark;
+}
 
+:root,
+.scheme-dark {
   --bg: light-dark(#ffffff, #0c1311);
   --sf: light-dark(#f3f7f5, #141d1a);
   --sf2: light-dark(#e7eeea, #1f2a26);

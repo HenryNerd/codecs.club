@@ -1,5 +1,6 @@
 import { Pill } from "@/components/ui/Pill";
-import type { CheckPart } from "@/lib/fixtures";
+
+export type CheckPart = { name: string; met: boolean; detail?: string };
 
 const outcomeLabel = {
   complete: { text: "✓ Completion", tone: "mint" as const },

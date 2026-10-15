@@ -145,14 +145,22 @@ export default defineSchema({
     .index("by_studentId_and_updatedAt", ["studentId", "updatedAt"])
     .index("by_assignmentId", ["assignmentId"]),
 
+  /** The live working copy, one row per file. */
   workFiles: defineTable({
     workspaceId: v.id("workspaces"),
     name: v.string(),
     content: v.string(),
     updatedAt: v.number(),
     updatedBy: v.id("users"),
+    /**
+     * Bumped on every write. Editors send the revision their text is based on,
+     * so a save over someone else's change can keep that change in history.
+     * Unset on rows written before Phase 3; read as 0.
+     */
+    revision: v.optional(v.number()),
   }).index("by_workspaceId_and_name", ["workspaceId", "name"]),
 
+  /** Immutable whole-workspace snapshots; restoring adds a version. */
   workVersions: defineTable({
     workspaceId: v.id("workspaces"),
     number: v.number(),
@@ -160,11 +168,14 @@ export default defineSchema({
     createdBy: v.id("users"),
     createdAt: v.number(),
     reason: v.union(
+      v.literal("start"),
       v.literal("autosave"),
       v.literal("restore"),
       v.literal("teacher"),
       v.literal("submit"),
     ),
+    /** For reason "restore": the version number that was restored. */
+    restoredFrom: v.optional(v.number()),
   }).index("by_workspaceId_and_number", ["workspaceId", "number"]),
 
   /** Guided check outcome for one code version under one revision's rules. */

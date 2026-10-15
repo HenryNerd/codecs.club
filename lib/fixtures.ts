@@ -117,57 +117,6 @@ export const myWorkFixture: WorkGroup[] = [
   },
 ];
 
-/* ---------- 4d Assignment Workspace ---------- */
-
-export type CheckPart = { name: string; met: boolean; detail?: string };
-
-export const workspaceFixture = {
-  assignment: {
-    title: "Countdown",
-    type: "guided" as const,
-    dayLabel: "Day 5: Loops",
-    instructions:
-      "Use a loop to count down from **10** to **1**, printing each number. Then print `Liftoff!`",
-    expectedOutput: "10\n9\n8\n…\n1\nLiftoff!",
-    slidesUrl: "https://www.canva.com/design/DAF8xQ/loops",
-  },
-  student: { name: "Jordan Smith", firstName: "Jordan" },
-  save: { state: "saved" as const, savedAt: pt("2026-10-15T23:20:48Z") },
-  teacher: { name: "Ms. Rivera", cursorLine: 6 },
-  help: { requestedAt: pt("2026-10-15T23:18:00Z") },
-  turnIn: { closesAt: pt("2026-10-30T06:59:00Z"), latestVersion: 14, submitted: false },
-  files: [
-    {
-      name: "main.py",
-      content:
-        '# Countdown to liftoff\ncount = 10\n\nwhile count > 0:\n    print(count)\n    count = count - 2\n\nprint("Liftoff!")\n',
-    },
-    { name: "helpers.py", content: "def blastoff():\n    return \"Liftoff!\"\n" },
-  ],
-  versions: [
-    { number: 14, at: pt("2026-10-15T23:20:48Z"), by: "you" },
-    { number: 13, at: pt("2026-10-15T23:18:02Z"), by: "Ms. Rivera" },
-    { number: 12, at: pt("2026-10-15T23:12:40Z"), by: "you" },
-  ],
-  run: {
-    output: "10\n8\n6\n4\n2\nLiftoff!",
-    errors: 0,
-    seconds: 0.04,
-    by: "you",
-    version: 14,
-  },
-  check: {
-    version: 14,
-    outcome: "partial" as const,
-    parts: [
-      { name: "Counts down from 10", met: true },
-      { name: "Reaches every number down to 1", met: false, detail: "expected 9 after 10, got 8" },
-      { name: "Ends with Liftoff!", met: true },
-    ] satisfies CheckPart[],
-    partialMin: 2,
-  },
-};
-
 /* ---------- 4h Admin Assignments ---------- */
 
 export const assignmentEditorFixture = {

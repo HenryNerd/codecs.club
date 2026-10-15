@@ -49,14 +49,32 @@ Do not silently invent approved defaults. Independent implementation work can pr
 | V04 | Collaboration/presence/restores | Two browsers converge; disconnects, concurrent edits/restores preserve work |
 | V05 | Remote Run routing | Correct version/actor; explicit busy/offline/late-result behavior |
 | V06 | Auth integration/access | Hashes/sessions; negative student/admin access tests; recovery consistent with D02. **Oct 15:** Convex Auth chosen (student `ConvexCredentials` + admin `Password`); sign-in round trips and refusals pass in `convex-test`; not yet exercised against the deployed backend |
-| V07 | File/slide storage | Durable uploads/resume/download; appropriate ownership/access; actionable failures |
-| V08 | Persistence/submission retry | No false saves; no duplicate attempts; immutable snapshots survive edits/moves |
+| V07 | File/slide storage | Durable uploads/resume/download; appropriate ownership/access; actionable failures. **Oct 15:** workspace files are text rows (`workFiles`), not Convex file storage; upload/download of `.py/.txt/.csv/.json` with size limits and readable refusals built; not yet tested on a Chromebook |
+| V08 | Persistence/submission retry | No false saves; no duplicate attempts; immutable snapshots survive edits/moves. **Oct 15:** autosave shows Saved only after the save mutation resolves, keeps edits through failures/disconnects, and restores add versions without deleting any (unit and `convex-test` evidence); submissions not built yet |
 | V09 | Capacity/provider plan | 50-student active-use checks plus admins; estimated retained files/versions/API use |
 | V10 | UI usability/accessibility | Keyboard/focus/contrast, panel resizing, Chromebook viewport, output flood |
 | V11 | Tooling readiness | Correct ESLint integration, generated route types, passing lint/typecheck/build |
 | V12 | Release readiness | Correct backend/env, auth origins, hosting headers/assets, domain and smoke test |
 
 SDK installation and documentation examples are not evidence of working application features. Pyodide remains a technical decision within scope, subject to compatibility tests.
+
+## Checks performed — October 15, 2026 (Phase 3 editor and persistence, macOS)
+
+| Check | Result |
+| --- | --- |
+| Convex codegen + function typecheck | Passed (`npx convex codegen --typecheck enable`); nothing pushed to a deployment |
+| Lint | Passed with no warnings/errors |
+| Typecheck | Passed (`npm run typecheck`) |
+| Production build | Passed; `/learn/assignments/[assignmentId]` partially prerendered as before |
+| Unit/integration tests | `npm test`: 34 passed. New: 8 `convex-test` workspace tests (starter files become v1 and reopening returns the same workspace; drafts and other curricula refused while a student's own past work opens; another student's workspace refused for save, versions, version and restore, plus anonymous and admin callers; autosave adds at most one version per 2 minutes; a save over another tab's change keeps it in history; restore adds a checkpoint and a `restore` version and leaves every earlier version unchanged; file name/size/duplicate rules) and 9 autosave-engine tests (not Saved until the save resolves, max-wait saving while typing, retry with backoff, no retry for refused saves, offline state, own-save echo, merge/conflict rules, server removals, flush) |
+| Browser check (harness) | Editor rendered with a temporary harness page on a production build at 1366×768 (page removed afterwards): Geist Mono 500 15/26 px, 52 px gutter, design syntax colors on `--code-bg`; Enter auto-indents 4 spaces; switching files keeps each file's text; Saving… → ✓ Saved, Save failed · Retry → automatic retry → Saved, and Offline · changes kept all observed |
+| Browser check (live, dev deployment) | After the developer pushed, set auth keys, created an admin and seeded `tidy-firefly-410`, the production build was served on localhost:3101 and the developer signed in as `jsmith`. Countdown opened Jordan's seeded v14 with “✓ Saved”, task, expected output and turn-in close; Versions listed v14 and inspecting it showed the read-only view. Loop art created a workspace (v1 “start”, empty `main.py`); typed code reached `workFiles` exactly (checked with `npx convex data`); `+` refused “my shapes” with a readable message and created `shapes.py`; uploading `shapes.csv` added and saved it, while `scores 2026.csv`, a 150 KB `big.txt` and `picture.png` were refused with messages; Download produced `shapes.csv` with the same text; a reload restored all three files; an autosave checkpoint v2 appeared about 3 minutes after v1; restoring v1 added v3 (pre-restore work) and v4 “Restored v1” and removed the extra files; restoring v3 brought all files back as v5; editing afterwards saved without a conflict notice or extra version; the header Day link waited for a running save before leaving. The unload handler cancels unload only while unsaved, but the pane's scripted navigation skips the browser's “Leave site?” prompt, so the prompt itself was not seen and an edit made just before that scripted reload was lost. Fixed during the check: type tag alignment in the header, element ids duplicated by Next keeping a left workspace mounted, Python highlighting on non-`.py` files, upload message for wrong file types |
+| Dark editor fix | The build compiles `light-dark()` into variables resolved where tokens are declared, so `.scheme-dark` regions (editor, code views) had been rendering light colors. Tokens are now declared on `:root, .scheme-dark` in `app/globals.css`; verified dark in the browser |
+| Development deployment | Pushed by the developer (`npx convex dev --once`), then auth keys, an admin and the seed were set up. The check left a Loop art workspace for `jsmith` (5 versions, 3 files). Someone else signed in as `jsmith` (the developer or another session) also created a workspace with `print("Hello")` and an empty `helpers.py` on a third assignment during the check; it is not from this check |
+| Production data | Not inspected or modified |
+| Device/load tests | Not performed |
+
+Scenario 5 (save/resume/disconnect) now has unit and `convex-test` evidence for autosave, offline buffering and restore; it is not marked passed end to end.
 
 ## Checks performed — October 15, 2026 (Phase 1 structure, macOS)
 

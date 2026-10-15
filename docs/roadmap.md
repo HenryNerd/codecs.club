@@ -14,8 +14,21 @@ The visual reference is the Claude Design project **CodeCS Basic v2**, saved at 
 | Backend | Full Convex schema (`convex/schema.ts`), role checks (`convex/lib/access.ts`), login-code allocation, time-zone helpers, admin change history, seed of the design's sample school |
 | Sign-in | Convex Auth: student login code (`ConvexCredentials`, rate-limited) and admin username/password (`Password`, sign-up refused; accounts created with `admins:createAdmin`) |
 | Live screens | Learning home, Lesson day, Admin Students (roster, attendance, group/curriculum/login-code changes), Admin Curriculum (timeline, day content, lesson dates), Settings (read-only), History |
-| Preview screens | Workspace, My work, Assignments editor, Assistance, Review render sample data from `lib/fixtures.ts` behind a visible “Preview” banner; nothing on them is saved |
+| Preview screens | My work, Assignments editor, Assistance, Review render sample data from `lib/fixtures.ts` behind a visible “Preview” banner; nothing on them is saved (the Workspace went live in Phase 3) |
 | Tests | `npm test`: login codes, sign-in round trips, student/admin access refusals, reassignment history, turn-in close time zones, partial rule |
+
+## Phase 3 — Editor and persistence (built)
+
+| Area | What exists |
+| --- | --- |
+| Editor | CodeMirror 6 (`components/workspace/CodeEditor.tsx`) with Python highlighting, 4-space indent, bracket matching/closing, search and undo per file; theme from the design's `--k/--f/--s/--n/--c/--o` and `--code-*` tokens (`editorTheme.ts`), dark by default via `.scheme-dark` |
+| Workspace screen | `/learn/assignments/[assignmentId]` is live: task and expected output, file tabs, Files and Versions panels, turn-in close date and attempt count. Run, Stop, Packages, Check, Turn in and Ask for help render disabled (“Not available yet”) for Phases 4–6 and 9 |
+| Files | Add (`+`, name checked as you type it), switch, upload (`.py/.txt/.csv/.json`, confirm before replacing) and download the shown file. Limits: 20 files, 100 KB per file, 400 KB per workspace (`convex/lib/workFiles.ts`, enforced on both sides) |
+| Backend | `convex/workspaces.ts`: `get` (task + working copy), `open` (creates the workspace from the published starter files as v1), `saveFiles` (autosave; per-file revisions), `versions` (paginated), `version`, `restore`. Students only, caller derived from the session, someone else's workspace reads as not found, drafts and other curricula never open (a student's own past work still does) |
+| Autosave | `lib/workspaceSync.ts`: 0.8 s debounce, at most 4 s during continuous typing, one save in flight. Header shows Saving… / ✓ Saved / Offline · changes kept / Save failed · Retry; “Saved” only after the mutation resolves. Failed saves keep the edits and retry with backoff (2 s doubling to 30 s) and on reconnect; invalid saves wait for the next edit. Saves on tab hide and when leaving; full page unloads with unsaved work trigger the browser warning; in-app links wait for a running save or ask when offline/failed |
+| Versions | A version is added at most every 2 minutes while saving, plus v1 starter code. Restore first snapshots unsaved-to-history work, then adds a `restore` version recording `restoredFrom`; nothing is deleted. A save over a change made in another tab keeps that change as a version first |
+| Schema | Additive only: `workFiles.revision` (optional), `workVersions.reason` gains `"start"`, `workVersions.restoredFrom` (optional) |
+| Tests | `npm test`: workspace ownership refusals (save/versions/version/restore), drafts and other curricula refused, starter copy as v1, checkpoint spacing, restore keeps history, cross-tab overwrite kept in history, file rules; autosave engine states, retry, offline, echo/merge rules |
 
 ## Later phases
 
@@ -24,7 +37,7 @@ Each phase is its own piece of work. Screens move off fixtures as their phase la
 | Phase | Scope | Blocked on |
 | --- | --- | --- |
 | 2. Student path, live | My work from real workspaces/submissions/feedback; historical context labels; past-curriculum access | — |
-| 3. Editor and persistence | CodeMirror 6 with the design's syntax theme (dark by default); multiple files, upload/download; debounced autosave with Saving/Saved/Failed and offline buffering; leave-page warning; version history inspect/restore | — |
+| 3. Editor and persistence | Built (see above); checked live against the dev deployment on October 15, 2026 | — |
 | 4. Python runtime | Pyodide in a Web Worker; runtime states; Stop via interrupt buffer with terminate/restart fallback; batched output; micropip with clear unsupported errors; check cross-origin-isolation headers against storage images and slide links | V01–V03 device tests |
 | 5. Guided evaluation | Whitespace-stripped part matching (begins / contains in order / ends / equals); partial rule; loop observation up to 1,000 iterations incl. nested loops; results tied to code version and revision; stale-result labels | V03 |
 | 6. Turn-in and review | Idempotent snapshot submissions after a confirmed save; server-enforced cutoff; review queue, expected vs actual, optional student feedback and private notes, Mark reviewed, new-attempt states | D09 |

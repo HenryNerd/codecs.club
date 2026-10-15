@@ -49,7 +49,7 @@ Persistence requirements:
 - Admin changes record actor, time, affected records, and relevant prior/new values, excluding passwords/secrets.
 - App authentication is separate from the developer CLI/MCP account. It uses Convex Auth: students sign in with a login code (`ConvexCredentials` provider `student`, rate-limited per code and site-wide for unknown codes); admins sign in with username and password (`Password` provider, scrypt hash, public sign-up refused). Admin accounts are created with the internal `admins:createAdmin` function.
 - Every public function derives the caller from the session (`convex/lib/access.ts`: `requireAdmin`, `requireStudent`) and never accepts an identity argument. Client route guards only choose what to render.
-- Define how text files, uploaded assets, and slides use database records versus Convex file storage during implementation. Validate access before exposing protected files.
+- Student workspace files (including uploaded `.py/.txt/.csv/.json`) are text rows in `workFiles`, with whole-workspace snapshots in `workVersions`; limits in `convex/lib/workFiles.ts` keep a snapshot under the 1 MiB document limit. Define how cover images and other binary assets use Convex file storage when those features are built. Validate access before exposing protected files.
 
 See [pending decisions](decisions-and-verification.md) for roster matching, account recovery, and versioned assignment editing. No custom backup system is included; required version history and admin change history are separate behaviors.
 
