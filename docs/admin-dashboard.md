@@ -11,7 +11,7 @@ The non-student side uses specific admin usernames and passwords backed by Conve
 - Persist each admin identity and authentication records in Convex; store password hashes rather than readable passwords.
 - Admin sign-in opens the admin dashboard, with visible signed-in identity and sign-out.
 - Check admin authorization in backend operations as well as page navigation. A student session cannot perform management operations.
-- The account provisioning, recovery process, and authentication library will be settled before implementation.
+- Authentication uses Convex Auth’s password provider. Until in-app provisioning exists, a developer creates admin accounts with `npx convex run admins:createAdmin` (see [deployment](deployment.md#first-time-setup)); forgotten-password recovery is still pending (D02).
 - Website admin accounts are distinct from developer accounts used to operate the Convex service.
 
 ### Dashboard scope
@@ -37,7 +37,7 @@ Configurable functionality means exposing controls for approved product behavior
 - Changing a student login is an explicit admin action. Validate uniqueness across all students and retain the student's internal identity and work; display the updated code for ticket reprinting.
 - Schedule and cutoff controls show the target year, lesson, effective date/time, and time zone. Unscheduled lessons must not acquire invented dates.
 - Content, expected-output, and configuration edits cannot silently overwrite student files, prior submissions, or historical check results.
-- Notes associated with student review must be clearly distinguished from execution output and automated check results. Whether every note is student-visible still needs a decision.
+- Notes associated with student review must be clearly distinguished from execution output and automated check results. Written feedback is optional and student-visible; a separate private note is visible to admins only (D07).
 - Use contextual forms with validation and save feedback for editable data rather than exposing arbitrary database fields.
 - Separate live assistance from review of a submitted snapshot, while preserving a clear path between them.
 - Use a persistent dashboard navigation with the selected group/curriculum/year visible where relevant.
@@ -64,7 +64,7 @@ UI requirements:
 - A group change takes effect in the student's current curriculum view without deleting old work.
 - Use only basic and advanced as group choices; do not generate annual classes.
 - Printed tickets include student identity, website address, stable login code, and sign-in instructions.
-- Attendance uses group and lesson/date context and remains separate from online presence.
+- Attendance is Present, Late or Absent for the group’s current lesson date (D11) and remains separate from online presence.
 
 The spreadsheet columns, supported file formats, and persistent-identity matching rule must be agreed before import implementation.
 

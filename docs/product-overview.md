@@ -2,7 +2,7 @@
 
 Code CS is an in-house-designed, provider-hosted Colab replacement for middle-school students learning Python. Convex Cloud is the backend; browser Python execution is the priority.
 
-These are agreed requirements, not implemented features. See [deployment status](deployment.md) and [decisions and verification](decisions-and-verification.md). Only agreed features enter these specifications; pending decisions are recorded separately.
+These are agreed requirements. What is built so far is tracked in the [roadmap](roadmap.md); setup and evidence are in [deployment](deployment.md) and [decisions and verification](decisions-and-verification.md). Only agreed features enter these specifications; pending decisions are recorded separately.
 
 ## Capacity requirement
 
@@ -40,7 +40,7 @@ These are agreed requirements, not implemented features. See [deployment status]
 | Persistence | Autosave to Convex, resume work, and version history |
 | Progress | Assignment progress plus completion, partial completion, or no completion for guided checks |
 | Turn-in | Submit a saved version for review; after return, edit/resubmit regardless of completion result until the deadline |
-| Turn-in cutoff | Admin-editable lesson-relative window and closing time; approximately two weeks was requested |
+| Turn-in cutoff | Admin-editable lesson-relative window and closing time; default 14 days, closing 11:59 pm Pacific |
 | Remote assistance | Teachers join directly with a student notification; simultaneous editing with labeled teacher cursors |
 | Teacher capabilities | View, edit, run student code, and send guidance |
 | Help requests | Student help button alerts the teacher |

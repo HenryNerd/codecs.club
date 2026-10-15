@@ -8,13 +8,51 @@
  * @module
  */
 
+import type * as adminCurriculum from "../adminCurriculum.js";
+import type * as adminHistory from "../adminHistory.js";
+import type * as adminNav from "../adminNav.js";
+import type * as adminSettings from "../adminSettings.js";
+import type * as adminStudents from "../adminStudents.js";
+import type * as admins from "../admins.js";
+import type * as auth from "../auth.js";
+import type * as http from "../http.js";
+import type * as lib_access from "../lib/access.js";
+import type * as lib_changes from "../lib/changes.js";
+import type * as lib_errors from "../lib/errors.js";
+import type * as lib_loginCodes from "../lib/loginCodes.js";
+import type * as lib_rateLimits from "../lib/rateLimits.js";
+import type * as lib_time from "../lib/time.js";
+import type * as seed from "../seed.js";
+import type * as student from "../student.js";
+import type * as students from "../students.js";
+import type * as viewer from "../viewer.js";
+
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
 
-declare const fullApi: ApiFromModules<{}>;
+declare const fullApi: ApiFromModules<{
+  adminCurriculum: typeof adminCurriculum;
+  adminHistory: typeof adminHistory;
+  adminNav: typeof adminNav;
+  adminSettings: typeof adminSettings;
+  adminStudents: typeof adminStudents;
+  admins: typeof admins;
+  auth: typeof auth;
+  http: typeof http;
+  "lib/access": typeof lib_access;
+  "lib/changes": typeof lib_changes;
+  "lib/errors": typeof lib_errors;
+  "lib/loginCodes": typeof lib_loginCodes;
+  "lib/rateLimits": typeof lib_rateLimits;
+  "lib/time": typeof lib_time;
+  seed: typeof seed;
+  student: typeof student;
+  students: typeof students;
+  viewer: typeof viewer;
+}>;
 
 /**
  * A utility for referencing Convex functions in your app's public API.
@@ -42,4 +80,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
+};

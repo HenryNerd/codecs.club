@@ -60,7 +60,7 @@ These describe navigable areas; closely related areas may share a page. Group co
 - Smaller layouts may rearrange panels but must preserve task context and access to essential actions.
 - Keep save and assistance status visible as panels change.
 - Use plain, consistent labels such as Run, Stop, Help, Turn in, Save draft, basic, and advanced.
-- Branding, final colors, and detailed visual layouts will be settled in the design discussion.
+- Branding, colors and layouts follow the approved **CodeCS Basic v2** design (decision D10); see [Visual system](#visual-system).
 
 ## Component contracts
 
@@ -78,4 +78,33 @@ These describe navigable areas; closely related areas may share a page. Group co
 | Review history | Attempts/snapshots/checks/feedback/return | Unreviewed, returned, new unreviewed attempt |
 | Change history | Actor/time/record/prior-new values | Loading, empty, populated, failed |
 
-These describe responsibilities, not extra features or final mockups. Preserve separate save, runtime, result, submission, and presence indicators. Detailed visual choices remain D10 in the [decision register](decisions-and-verification.md). Accessibility/responsive behavior requires testing on implemented UI, including actual Chromebook viewports.
+These describe responsibilities, not extra features or final mockups. Preserve separate save, runtime, result, submission, and presence indicators. Accessibility/responsive behavior requires testing on implemented UI, including actual Chromebook viewports.
+
+## Visual system
+
+The approved reference is the Claude Design project **CodeCS Basic v2**, saved in the repository at [`design/CodeCS Basic v2.dc.html`](../design/CodeCS%20Basic%20v2.dc.html). It shows all 10 screens at a **1366×768** Chromebook viewport in light and dark.
+
+- **Tokens** live in `app/globals.css` as `light-dark()` pairs and are exposed to Tailwind (`bg-sf`, `text-ink3`, `bg-mint-s`, …). Change colors there, not in components.
+- **Color roles:** mint is the brand and primary action; amber marks partial work, warnings and help; coral marks errors and unmet checks; violet always means the teacher (joined, cursors, feedback). Status always carries text or a symbol as well as color.
+- **Type:** Open Sauce Sans (self-hosted via `@fontsource`) for UI; Geist Mono for code, login codes and file names.
+- **Themes:** light, dark, or follow the device (Auto), saved per device. The code editor stays dark by default in both themes.
+- **Components** are in `components/ui/` (shared), `components/student/`, `components/workspace/` and `components/admin/`.
+
+## Route map
+
+| Route | Screen (design id) | Data |
+| --- | --- | --- |
+| `/` | Home / Login (4a) | Live sign-in |
+| `/learn` | Student Learning Home (4b) | Live |
+| `/learn/days/[dayId]` | Lesson Day (4c) | Live |
+| `/learn/assignments/[assignmentId]` | Assignment Workspace (4d) | Preview fixtures (Phases 3–6) |
+| `/learn/work` | Student Work History (4e) | Preview fixtures (Phase 2) |
+| `/admin/students` | Admin / Students (4f) | Live roster, attendance, student edits |
+| `/admin/curriculum` | Admin / Curriculum and Lessons (4g) | Live timeline, day content, lesson dates |
+| `/admin/assignments`, `/admin/assignments/[assignmentId]` | Admin / Assignments (4h) | Preview fixtures (Phase 7) |
+| `/admin/assistance` | Admin / Assistance (4i) | Preview fixtures (Phase 9) |
+| `/admin/review` | Admin / Review (4j) | Preview fixtures (Phase 6) |
+| `/admin/settings` | Settings (no design) | Live, read-only |
+| `/admin/history` | Change history (no design) | Live |
+
+Preview screens show a “Preview” banner and disable actions that would need saving. The [roadmap](roadmap.md) lists what each phase connects.

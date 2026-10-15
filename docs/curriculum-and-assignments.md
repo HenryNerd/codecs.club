@@ -6,7 +6,7 @@
 
 Basic and advanced are permanent groups. Curricula contain ordered topic days with slides and assignments. Guided work supports lesson exercises; open-ended blank-file work supports projects and finals. Reassignment preserves student identity and history. Dates/times are supplied for each year without overwriting historical schedules. Drafts stay private; published assignments belong to the intended curriculum day.
 
-Slides may be authored in Figma or Google Slides. Delivery format, future lesson release, and effects of published edits are pending choices in the [decision register](decisions-and-verification.md).
+Each day has a cover image shown on its lesson page and a link to slides made in Canva or Figma Slides (D01). Future lesson release and effects of published edits are pending choices in the [decision register](decisions-and-verification.md).
 
 ## Guided evaluation
 
@@ -62,7 +62,7 @@ Run success does not imply completion; completion does not imply submission. A n
 
 ## Dates and published edits
 
-Admins configure lesson-relative turn-in windows and closing times. Roughly two weeks is the requested direction, not a finalized default. Exact duration/time zone, unscheduled behavior, and date-change effects remain pending. Backend checks must enforce the cutoff, not only disable a button.
+Turn-in closes **14 days** after the lesson date at **11:59 pm Pacific** (America/Los_Angeles); both values are Settings (D05). Unscheduled days have no close and show “Not scheduled”. Changing a lesson date moves its close (D06); the close is derived from the date and Settings (`convex/lib/time.ts`). Backend checks must enforce the cutoff, not only disable a button. Reviewing work never extends it.
 
 Published instructions and checks can be edited, but previous files, snapshots, and results must not be silently overwritten. Results identify the code and evaluation definition used. Application of new content to existing work and re-evaluation remain explicit decisions.
 

@@ -35,9 +35,7 @@ Each day includes slides and assignments. Students access the slides and choose 
 - Distinguish a day with no assignments from a loading error.
 - Preserve lesson context when moving between the day and an assignment.
 
-Admins upload slides associated with a lesson day. Students can open and follow them from that day. Supported upload formats and presentation method will be settled before implementation.
-
-Slide material may be designed in Figma or Google Slides. The authoring tool does not yet determine the delivery format: upload/export versus a hosted link/embed remains undecided. Do not require students to have an authoring-tool account merely because the lesson was designed there.
+Slides are presented live in class. Each lesson day shows a cover image and an “Open slides” link to the Canva or Figma Slides deck, which opens in a new tab so students can look back anytime (D01). Do not require students to have an authoring-tool account merely because the lesson was designed there; slide links must be shared for viewing.
 
 ### 4. Work on an assignment
 
@@ -102,7 +100,7 @@ After review, the teacher can return work with feedback. The student can edit it
 
 Resubmission after return is allowed for **completion, partial completion, and no completion** alike, up to the assignment's deadline. A fully completed assignment can still be improved and submitted again; its completion result must not disable resubmission.
 
-Turn-in availability is tied to that year's teacher-supplied lesson date and a closing window. The requested behavior is to prevent turn-in roughly two weeks after the lesson; admins can edit the turn-in window and closing time from the dashboard. The exact default duration is not yet finalized.
+Turn-in availability is tied to that year's teacher-supplied lesson date and a closing window: by default turn-in closes 14 days after the lesson at 11:59 pm Pacific (D05). Admins can change the window and closing time in Settings, and moving a lesson date moves its close (D06).
 
 - Make Turn in distinct from Run and autosave.
 - Save successfully before confirming submission; a failed save cannot produce a successful turn-in message.

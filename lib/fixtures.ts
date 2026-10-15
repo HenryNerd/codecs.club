@@ -1,0 +1,309 @@
+/**
+ * Sample data for screens not yet wired to Convex. Shapes mirror what the
+ * matching queries will return, so wiring a screen means swapping the source,
+ * not rewriting the UI. Values follow the CodeCS design and convex/seed.ts.
+ */
+
+const pt = (iso: string) => new Date(iso).getTime();
+export const FIXTURE_TIME_ZONE = "America/Los_Angeles";
+
+/* ---------- 4e Student Work History ---------- */
+
+export type WorkStatus =
+  | { kind: "inProgress"; savedAt: number }
+  | { kind: "notTurnedIn"; closesTonight: boolean }
+  | { kind: "turnedIn" }
+  | { kind: "reviewed"; reviewedAt: number; hasNote: boolean; closed: boolean };
+
+export type WorkItem = {
+  id: string;
+  title: string;
+  context: string;
+  status: WorkStatus;
+  assignmentId: string | null;
+  detail?: {
+    heading: string;
+    attempts: Array<{
+      attempt: number;
+      submittedAt: number;
+      version: number;
+      check: "completion" | "partial completion" | "no completion" | null;
+      review?: { by: string; at: number; note?: string };
+    }>;
+    turnInClosedAt?: number;
+  };
+};
+
+export type WorkGroup = {
+  year: string;
+  label: string;
+  current: boolean;
+  items: WorkItem[];
+};
+
+export const myWorkFixture: WorkGroup[] = [
+  {
+    year: "2026-27",
+    label: "2026–27 · basic · Python Fundamentals",
+    current: true,
+    items: [
+      {
+        id: "countdown",
+        title: "Countdown",
+        context: "Day 5 · Loops · guided",
+        status: { kind: "inProgress", savedAt: pt("2026-10-15T23:00:00Z") },
+        assignmentId: null,
+      },
+      {
+        id: "madlibs",
+        title: "Mad libs",
+        context: "Day 3 · Input and strings · guided",
+        status: { kind: "notTurnedIn", closesTonight: true },
+        assignmentId: null,
+      },
+      {
+        id: "temperature",
+        title: "Temperature check",
+        context: "Day 4 · Conditionals · guided",
+        status: { kind: "turnedIn" },
+        assignmentId: null,
+      },
+      {
+        id: "nametag",
+        title: "Name tag",
+        context: "Day 2 · Variables · guided",
+        status: { kind: "reviewed", reviewedAt: pt("2026-09-28T16:00:00Z"), hasNote: true, closed: true },
+        assignmentId: null,
+        detail: {
+          heading: "Day 2 · Variables · Python Fundamentals 2026–27",
+          attempts: [
+            {
+              attempt: 1,
+              submittedAt: pt("2026-09-25T22:40:00Z"),
+              version: 7,
+              check: "completion",
+              review: {
+                by: "Ms. Rivera",
+                at: pt("2026-09-28T16:00:00Z"),
+                note: "Nice work! Try adding your favorite color too.",
+              },
+            },
+          ],
+          turnInClosedAt: pt("2026-10-09T06:59:00Z"),
+        },
+      },
+      {
+        id: "hello",
+        title: "Hello, world",
+        context: "Day 1 · Hello, Python · guided",
+        status: { kind: "reviewed", reviewedAt: pt("2026-09-21T16:00:00Z"), hasNote: false, closed: true },
+        assignmentId: null,
+      },
+    ],
+  },
+  {
+    year: "2025-26",
+    label: "2025–26 · basic · Intro to Python",
+    current: false,
+    items: [
+      {
+        id: "guessing",
+        title: "Guessing game",
+        context: "Final project · open-ended",
+        status: { kind: "reviewed", reviewedAt: pt("2026-05-22T16:00:00Z"), hasNote: false, closed: true },
+        assignmentId: null,
+      },
+    ],
+  },
+];
+
+/* ---------- 4d Assignment Workspace ---------- */
+
+export type CheckPart = { name: string; met: boolean; detail?: string };
+
+export const workspaceFixture = {
+  assignment: {
+    title: "Countdown",
+    type: "guided" as const,
+    dayLabel: "Day 5: Loops",
+    instructions:
+      "Use a loop to count down from **10** to **1**, printing each number. Then print `Liftoff!`",
+    expectedOutput: "10\n9\n8\n…\n1\nLiftoff!",
+    slidesUrl: "https://www.canva.com/design/DAF8xQ/loops",
+  },
+  student: { name: "Jordan Smith", firstName: "Jordan" },
+  save: { state: "saved" as const, savedAt: pt("2026-10-15T23:20:48Z") },
+  teacher: { name: "Ms. Rivera", cursorLine: 6 },
+  help: { requestedAt: pt("2026-10-15T23:18:00Z") },
+  turnIn: { closesAt: pt("2026-10-30T06:59:00Z"), latestVersion: 14, submitted: false },
+  files: [
+    {
+      name: "main.py",
+      content:
+        '# Countdown to liftoff\ncount = 10\n\nwhile count > 0:\n    print(count)\n    count = count - 2\n\nprint("Liftoff!")\n',
+    },
+    { name: "helpers.py", content: "def blastoff():\n    return \"Liftoff!\"\n" },
+  ],
+  versions: [
+    { number: 14, at: pt("2026-10-15T23:20:48Z"), by: "you" },
+    { number: 13, at: pt("2026-10-15T23:18:02Z"), by: "Ms. Rivera" },
+    { number: 12, at: pt("2026-10-15T23:12:40Z"), by: "you" },
+  ],
+  run: {
+    output: "10\n8\n6\n4\n2\nLiftoff!",
+    errors: 0,
+    seconds: 0.04,
+    by: "you",
+    version: 14,
+  },
+  check: {
+    version: 14,
+    outcome: "partial" as const,
+    parts: [
+      { name: "Counts down from 10", met: true },
+      { name: "Reaches every number down to 1", met: false, detail: "expected 9 after 10, got 8" },
+      { name: "Ends with Liftoff!", met: true },
+    ] satisfies CheckPart[],
+    partialMin: 2,
+  },
+};
+
+/* ---------- 4h Admin Assignments ---------- */
+
+export const assignmentEditorFixture = {
+  dayLabel: "Day 5: Loops",
+  dayShort: "Day 5",
+  savedAt: pt("2026-10-15T17:42:00Z"),
+  siblings: [
+    { id: "countdown", title: "Countdown", status: "published" as const, type: "guided" as const },
+    { id: "forever", title: "Forever greeter", status: "published" as const, type: "guided" as const },
+    { id: "loopart", title: "Loop art", status: "published" as const, type: "open" as const },
+    { id: "skip", title: "Skip counter", status: "draft" as const, type: "guided" as const },
+  ],
+  draft: {
+    id: "skip",
+    title: "Skip counter",
+    type: "guided" as "guided" | "open",
+    instructions:
+      "Print every third number from **3** up to **30**. When you’re done counting, print `Done!`",
+    starterFiles: [{ name: "main.py", content: 'start = 3\n# your loop here\nprint("Done!")\n' }],
+    parts: [
+      { name: "Starts at 3", kind: "begins" as const, expected: "3 6" },
+      { name: "Counts by threes to 30", kind: "containsInOrder" as const, expected: "3 6 9 12 15 18 21 24 27 30" },
+      { name: "Ends with Done!", kind: "ends" as const, expected: "Done!" },
+    ],
+    partialMin: 2,
+    loopCheck: false,
+  },
+};
+
+/* ---------- 4i Admin Assistance ---------- */
+
+export type Presence = "online" | "idle" | "offline";
+
+export type SeatStudent = {
+  loginCode: string;
+  name: string;
+  presence: Presence;
+  task: string;
+  activity: string;
+  /** Minutes waiting for help, if a help request is open. */
+  helpWaitMin?: number;
+};
+
+export const assistanceLessonFixture = { label: "Day 5: Loops", context: "basic · Day 5 · Loops" };
+
+export const assistanceCodeFixture: Record<string, { code: string; cursorLine: number; output: string }> = {
+  Countdown: {
+    code: '# Countdown to liftoff\ncount = 10\n\nwhile count > 0:\n    print(count)\n    count = count - 2\n\nprint("Liftoff!")\n',
+    cursorLine: 8,
+    output: "10\n8\n6\n4\n2\nLiftoff!",
+  },
+  "Forever greeter": {
+    code: 'name = input("Name? ")\nwhile True:\n    print("Hello,", nam)\n',
+    cursorLine: 3,
+    output: "NameError: name 'nam' is not defined (line 3)",
+  },
+  "Loop art": {
+    code: 'for row in range(5):\n    print("*" * (row + 1))\n',
+    cursorLine: 2,
+    output: "*\n**\n***\n****\n*****",
+  },
+};
+
+/** Seating chart in desk order: 6 desks per row (3 + aisle + 3); null = empty seat. */
+export const seatsFixture: Array<SeatStudent | null> = [
+  { loginCode: "achen", name: "Ava Chen", presence: "online", task: "Countdown", activity: "ran · no errors" },
+  { loginCode: "jsmith", name: "Jordan Smith", presence: "online", task: "Countdown", activity: "editing", helpWaitMin: 3 },
+  { loginCode: "jsmith1", name: "Jamie Smith", presence: "online", task: "Forever greeter", activity: "running…" },
+  { loginCode: "anguyen", name: "Alex Nguyen", presence: "online", task: "Forever greeter", activity: "error · line 3", helpWaitMin: 1 },
+  { loginCode: "ppatel", name: "Priya Patel", presence: "idle", task: "Countdown", activity: "last edit 4 min ago" },
+  { loginCode: "mjohnson", name: "Marcus Johnson", presence: "offline", task: "Countdown", activity: "not signed in today" },
+  { loginCode: "sgarcia", name: "Sofia Garcia", presence: "online", task: "Loop art", activity: "editing" },
+  { loginCode: "lobrien", name: "Liam O’Brien", presence: "offline", task: "Loop art", activity: "signed out 4:20 pm" },
+  { loginCode: "nkim", name: "Noah Kim", presence: "online", task: "Countdown", activity: "ran · no errors" },
+  { loginCode: "edavis", name: "Emma Davis", presence: "online", task: "Forever greeter", activity: "editing" },
+  null,
+  { loginCode: "mrossi", name: "Mateo Rossi", presence: "online", task: "Countdown", activity: "running…" },
+  { loginCode: "zwilliams", name: "Zoe Williams", presence: "online", task: "Loop art", activity: "editing" },
+  { loginCode: "ebrooks", name: "Ethan Brooks", presence: "idle", task: "Countdown", activity: "last edit 2 min ago" },
+  { loginCode: "msingh", name: "Maya Singh", presence: "online", task: "Countdown", activity: "ran · no errors" },
+  { loginCode: "lmartin", name: "Lucas Martin", presence: "online", task: "Forever greeter", activity: "error · line 5" },
+  { loginCode: "cpark", name: "Chloe Park", presence: "online", task: "Loop art", activity: "editing" },
+  { loginCode: "oclark", name: "Owen Clark", presence: "online", task: "Countdown", activity: "editing" },
+  { loginCode: "imoore", name: "Isla Moore", presence: "online", task: "Countdown", activity: "ran · no errors" },
+  null,
+  { loginCode: "bcarter", name: "Ben Carter", presence: "online", task: "Forever greeter", activity: "running…" },
+  { loginCode: "glee", name: "Grace Lee", presence: "offline", task: "Forever greeter", activity: "not signed in today" },
+  { loginCode: "lramirez", name: "Leo Ramirez", presence: "online", task: "Loop art", activity: "editing" },
+  { loginCode: "nhughes", name: "Nora Hughes", presence: "idle", task: "Countdown", activity: "last edit 6 min ago" },
+];
+
+/* ---------- 4j Admin Review ---------- */
+
+export type ReviewQueueItem = {
+  studentName: string;
+  loginCode: string;
+  state: "newAttempt" | "unreviewed" | "reviewed" | "notTurnedIn";
+  summary: string;
+};
+
+export const reviewFixture = {
+  dayLabel: "Day 5: Loops",
+  assignmentTitle: "Countdown",
+  turnInClosesAt: pt("2026-10-30T06:59:00Z"),
+  queue: [
+    { studentName: "Priya Patel", loginCode: "ppatel", state: "newAttempt", summary: "Attempt 2 · 3:12 pm · partial" },
+    { studentName: "Noah Kim", loginCode: "nkim", state: "unreviewed", summary: "Attempt 1 · 2:58 pm · completion" },
+    { studentName: "Ava Chen", loginCode: "achen", state: "unreviewed", summary: "Attempt 1 · 2:41 pm · completion" },
+    { studentName: "Maya Singh", loginCode: "msingh", state: "unreviewed", summary: "Attempt 1 · 2:30 pm · partial" },
+    { studentName: "Isla Moore", loginCode: "imoore", state: "unreviewed", summary: "Attempt 1 · 2:12 pm · no completion" },
+    { studentName: "Owen Clark", loginCode: "oclark", state: "reviewed", summary: "Attempt 1 · 1:50 pm · completion" },
+    { studentName: "Jordan Smith", loginCode: "jsmith", state: "notTurnedIn", summary: "Working copy saved today" },
+  ] satisfies ReviewQueueItem[],
+  selected: {
+    studentName: "Priya Patel",
+    loginCode: "ppatel",
+    attempts: [
+      { attempt: 1, reviewed: true, reviewedAt: pt("2026-10-15T21:45:00Z"), note: null as string | null },
+      { attempt: 2, reviewed: false, reviewedAt: null, note: null as string | null },
+    ],
+    snapshot: {
+      file: "main.py",
+      version: 19,
+      code: '# Countdown to liftoff\ncount = 10\nwhile count >= 1:\n    print(count)\n    count -= 1\nprint("Liftoff")\n',
+      failingLine: 6,
+    },
+    expected: { joined: "10 9 8 7 6 5 4 3 2 1", last: "Liftoff!" },
+    actual: { joined: "10 9 8 7 6 5 4 3 2 1", last: "Liftoff", issue: "missing “!”" },
+    check: {
+      outcome: "partial" as const,
+      parts: [
+        { name: "Counts down from 10", met: true },
+        { name: "Reaches every number down to 1", met: true },
+        { name: "Ends with Liftoff!", met: false },
+      ],
+      partialMin: 2,
+    },
+  },
+};
