@@ -38,6 +38,7 @@ import { ENTRY_FILE } from "@/lib/python/config";
 import { chooseEntry } from "@/lib/python/runner";
 import { useNow } from "@/lib/useNow";
 import type { WorkspaceSync } from "@/lib/workspaceSync";
+import { CheckPanel } from "./CheckPanel";
 import { CodeEditor, type CodeEditorHandle } from "./CodeEditor";
 import { OutputPanel } from "./OutputPanel";
 import { PackagesButton } from "./PackagesPanel";
@@ -57,8 +58,9 @@ const LATER = "Not available yet.";
 /**
  * 4d. Assignment workspace: the task beside a Python editor whose files save
  * to Convex as the student types, and Run executes them in Python in the
- * browser. Opening an assignment the first time copies its published starter
- * files. Check, Turn in and Help come later.
+ * browser. Guided work can be checked against the task. Opening an
+ * assignment the first time copies its published starter files. Turn in and
+ * Help come later.
  */
 export function Workspace({ assignmentId }: { assignmentId: string }) {
   const data = useQuery(api.workspaces.get, { assignmentId });
@@ -115,6 +117,10 @@ function WorkspaceScreen({ data }: { data: LoadedWorkspace }) {
   const { runtime, py } = usePythonRuntime(workspace._id);
   const guardLeave = useLeaveGuard(sync);
   const restoreVersion = useMutation(api.workspaces.restore);
+  const prepareCheck = useMutation(api.checks.prepare);
+  const recordCheck = useMutation(api.checks.record);
+  const [checking, setChecking] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
   const editor = useRef<CodeEditorHandle>(null);
   const now = useNow(60_000);
   // Next keeps a left workspace mounted (hidden), so element ids must be per screen.
@@ -146,6 +152,53 @@ function WorkspaceScreen({ data }: { data: LoadedWorkspace }) {
     }
     const files = fileNames.map((name) => ({ name, content: sync.content(name) ?? "" }));
     runtime.run(files, runTarget, workspace.packages);
+  };
+
+  /**
+   * Saves, pins the saved files as a version, runs them in check mode, and
+   * has Convex evaluate the output, so the result names the code it checked.
+   */
+  const runCheck = async () => {
+    setCheckError(null);
+    setChecking(true);
+    try {
+      try {
+        await sync.flush();
+      } catch {
+        setCheckError("Your latest changes haven’t saved, so the check didn’t run.");
+        return;
+      }
+      const prep = await prepareCheck({ workspaceId: workspace._id });
+      const entry = chooseEntry(prep.files.map((f) => f.name), null, ENTRY_FILE);
+      if (entry === null) {
+        setCheckError("Add a .py file to check.");
+        return;
+      }
+      const run = await runtime.check(prep.files, entry, workspace.packages, {
+        observeLoops: prep.observeLoops,
+        inputs: prep.inputs,
+      });
+      if (run.outcome === "stopped" || run.outcome === "unavailable") {
+        setCheckError(
+          run.outcome === "stopped"
+            ? "The check was stopped, so nothing was recorded."
+            : "Python isn’t ready, so the check didn’t run.",
+        );
+        return;
+      }
+      await recordCheck({
+        workspaceId: workspace._id,
+        versionId: prep.versionId,
+        revisionId: prep.revisionId,
+        output: run.output,
+        outputTruncated: run.truncated,
+        runOutcome: run.outcome,
+      });
+    } catch (error) {
+      setCheckError(errorMessage(error, "The check didn’t finish. Try again."));
+    } finally {
+      setChecking(false);
+    }
   };
 
   const showFile = (name: string) => {
@@ -353,21 +406,16 @@ function WorkspaceScreen({ data }: { data: LoadedWorkspace }) {
 
           <div className="grid h-[232px] flex-none grid-cols-2 bg-code-bar">
             <OutputPanel runtime={runtime} py={py} />
-            <section aria-label="Check" className="flex min-w-0 flex-col">
-              <div className="flex h-[42px] flex-none items-center gap-2.5 px-4">
-                <b className="text-sm font-bold">Check</b>
-                {assignment.type === "guided" && (
-                  <Button size="sm" variant="secondary" className="ml-auto h-7" disabled title={LATER}>
-                    Run check
-                  </Button>
-                )}
-              </div>
-              <p className="m-0 flex-1 px-4 text-sm text-ink3">
-                {assignment.type === "guided"
-                  ? "Checks will show which parts of the task your program meets. Not available yet."
-                  : "Open-ended: there’s no automatic check. Your teacher reviews your work."}
-              </p>
-            </section>
+            <CheckPanel
+              workspaceId={workspace._id}
+              guided={assignment.type === "guided"}
+              timeZone={timeZone}
+              checking={checking}
+              canCheck={py.status.kind === "ready"}
+              unsavedChanges={snapshot.files.some((f) => f.dirty)}
+              onCheck={() => void runCheck()}
+              error={checkError}
+            />
           </div>
         </section>
       </div>

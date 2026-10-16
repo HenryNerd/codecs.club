@@ -13,9 +13,11 @@ function statusLabel(status: RuntimeStatus, entry: string | null): { text: strin
     case "ready":
       return { text: "● Python ready", className: "text-mint-i" };
     case "running":
-      return status.waitingForInput
-        ? { text: "● Waiting for input", className: "text-amb-i" }
-        : { text: `● Running ${entry ?? ""}`.trimEnd(), className: "text-mint-i" };
+      if (status.waitingForInput) return { text: "● Waiting for input", className: "text-amb-i" };
+      return {
+        text: `● ${status.mode === "check" ? "Checking" : "Running"} ${entry ?? ""}`.trimEnd(),
+        className: "text-mint-i",
+      };
     case "stopping":
       return { text: "◐ Stopping…", className: "text-amb-i" };
     case "installing":

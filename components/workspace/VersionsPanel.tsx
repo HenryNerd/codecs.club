@@ -32,6 +32,8 @@ function reasonLabel(version: Pick<VersionSummary, "reason" | "restoredFrom">): 
       return "Turned in";
     case "teacher":
       return "Teacher edit";
+    case "check":
+      return "Checked";
     case "autosave":
       return null;
   }

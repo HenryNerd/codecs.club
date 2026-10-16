@@ -35,7 +35,7 @@ export function OutputPanel({ runtime, py }: { runtime: PythonRuntime; py: Runti
       <Pill tone="coral" className="px-2.5 font-semibold">Error</Pill>
     ) : py.lastRun?.outcome === "stopped" ? (
       <Pill tone="amber" className="px-2.5 font-semibold">Stopped</Pill>
-    ) : py.lastRun?.outcome === "ok" ? (
+    ) : py.lastRun?.outcome === "ok" || py.lastRun?.outcome === "limit" ? (
       <Pill className="px-2.5 font-semibold">0 errors</Pill>
     ) : null;
 
@@ -117,22 +117,40 @@ function RunSummary({ py }: { py: RuntimeSnapshot }) {
 
   if (status.kind === "running") {
     if (status.waitingForInput) return <>Waiting for you to type a line and press Enter.</>;
-    return (
+    const elapsed = Math.max(0, Math.floor((now - status.startedAt) / 1000));
+    return status.mode === "check" ? (
+      <>Checking {py.currentEntry} · {elapsed}s</>
+    ) : (
       <>
-        Running {py.currentEntry} · {Math.max(0, Math.floor((now - status.startedAt) / 1000))}s · run by you
+        Running {py.currentEntry} · {elapsed}s · run by you
       </>
     );
   }
   if (status.kind === "stopping") return <>Stopping…</>;
   const last = py.lastRun;
   if (last === null) return <>{py.pythonVersion ? `Python ${py.pythonVersion}` : " "}</>;
-  if (last.outcome === "ok") return <>Finished in {seconds(last.ms)} · run by you · {last.entry}</>;
-  if (last.outcome === "error") {
-    return <>Stopped with an error after {seconds(last.ms)} · run by you · {last.entry}</>;
+  const what = last.mode === "check" ? "Check run" : "Run";
+  if (last.outcome === "ok") {
+    return last.mode === "check" ? (
+      <>Check run finished in {seconds(last.ms)} · {last.entry}</>
+    ) : (
+      <>Finished in {seconds(last.ms)} · run by you · {last.entry}</>
+    );
   }
+  if (last.outcome === "limit") {
+    return <>Check run stopped your loop after 1,000 rounds, as planned · {last.entry}</>;
+  }
+  if (last.outcome === "error") {
+    return (
+      <>
+        {what} stopped with an error after {seconds(last.ms)} · {last.entry}
+      </>
+    );
+  }
+  if (last.timedOut) return <>Check run stopped after 10s: the program didn’t finish · {last.entry}</>;
   return (
     <>
-      Stopped after {seconds(last.ms)}
+      {what} stopped after {seconds(last.ms)}
       {last.restarted ? " · Python restarted" : ""} · {last.entry}
     </>
   );

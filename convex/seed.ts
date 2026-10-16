@@ -41,6 +41,7 @@ type AssignmentSeed = {
   parts?: Array<[name: string, kind: PartKind, expected: string]>;
   partialMin?: number;
   loopCheck?: boolean;
+  checkInput?: string;
 };
 
 type DaySeed = {
@@ -121,6 +122,7 @@ const FUNDAMENTALS: DaySeed[] = [
         type: "guided",
         summary: "Ask for three words and build a silly sentence.",
         instructions: "Ask for a noun, a verb and an adjective, then print a sentence that uses all three.",
+        checkInput: "cat\njump\nfluffy",
         parts: [
           ["Asks for a noun", "begins", "Noun?"],
           ["Prints a sentence", "ends", "."],
@@ -175,7 +177,7 @@ const FUNDAMENTALS: DaySeed[] = [
         expectedOutput: "10\n9\n8\n…\n1\nLiftoff!",
         starter: "# Countdown to liftoff\n",
         parts: [
-          ["Counts down from 10", "begins", "10 9"],
+          ["Counts down from 10", "begins", "10"],
           ["Reaches every number down to 1", "containsInOrder", "10 9 8 7 6 5 4 3 2 1"],
           ["Ends with Liftoff!", "ends", "Liftoff!"],
         ],
@@ -188,10 +190,11 @@ const FUNDAMENTALS: DaySeed[] = [
         instructions: "Ask for a name once, then greet that name forever with a while loop.",
         parts: [
           ["Asks for a name", "begins", "Name?"],
-          ["Greets again and again", "containsInOrder", "Hello, Hello, Hello,"],
+          ["Greets again and again", "containsInOrder", "Hello, Ada Hello, Ada Hello, Ada"],
         ],
         partialMin: 1,
         loopCheck: true,
+        checkInput: "Ada",
       },
       {
         title: "Loop art",
@@ -345,6 +348,7 @@ export const run = internalMutation({
             parts: (a.parts ?? []).map(([name, kind, expected]) => ({ name, kind, expected })),
             partialMin: a.partialMin ?? 0,
             loopCheck: a.loopCheck ?? false,
+            checkInput: a.checkInput,
             createdBy: teacher,
             createdAt: Date.now(),
           });

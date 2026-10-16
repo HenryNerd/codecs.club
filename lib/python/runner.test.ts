@@ -166,6 +166,60 @@ describe("running student files", () => {
   });
 });
 
+describe("checks observe endless loops for 1,000 rounds", () => {
+  const lines = () => out.split("\n").filter(Boolean);
+  const observe = (files: Array<{ name: string; content: string }>) => {
+    writeWorkspace(pyodide, files);
+    return runEntry(pyodide, "main.py", { observeLoops: true });
+  };
+
+  test("an endless greeter stops after exactly 1,000 rounds, which is not an error", () => {
+    stdinLines = ["Ada"];
+    const outcome = observe([
+      { name: "main.py", content: 'name = input("Name? ")\nwhile True:\n    print("Hello,", name)\n' },
+    ]);
+    expect(outcome).toBe("limit");
+    expect(err).toBe("");
+    expect(out.match(/Hello, Ada/g)).toHaveLength(1000);
+  });
+
+  test("rounds are counted, not printed lines: two prints per round, nested finite loops, no prints", () => {
+    expect(observe([{ name: "main.py", content: "while True:\n    print('a')\n    print('b')\n" }])).toBe("limit");
+    expect(lines()).toHaveLength(2000);
+    out = "";
+    expect(
+      observe([{ name: "main.py", content: "while True:\n    for j in range(3):\n        print(j)\n" }]),
+    ).toBe("limit");
+    expect(lines()).toHaveLength(3000);
+    out = "";
+    expect(observe([{ name: "main.py", content: "i = 0\nwhile True:\n    i += 1\n" }])).toBe("limit");
+    expect(out).toBe("");
+  });
+
+  test("loops in imported workspace files are observed too", () => {
+    const outcome = observe([
+      { name: "main.py", content: "import helpers\nhelpers.forever()\n" },
+      { name: "helpers.py", content: "def forever():\n    while True:\n        print('x')\n" },
+    ]);
+    expect(outcome).toBe("limit");
+    expect(lines()).toHaveLength(1000);
+  });
+
+  test("finite programs finish normally and errors keep their line numbers", () => {
+    expect(observe([{ name: "main.py", content: "for i in range(10):\n    print(i)\nprint('Done!')\n" }])).toBe("ok");
+    expect(lines()).toHaveLength(11);
+    expect(observe([{ name: "main.py", content: "x = 1\nwhile True:\n    print(x)\n    x = x / 0\n" }])).toBe("error");
+    expect(err).toContain('File "main.py", line 4');
+  });
+
+  test("a normal run after a check has no loop counters left over", () => {
+    observe([{ name: "main.py", content: "while True:\n    pass\n" }]);
+    writeWorkspace(pyodide, [{ name: "main.py", content: "for i in range(1200):\n    pass\nprint('ran all 1200')\n" }]);
+    expect(runEntry(pyodide, "main.py")).toBe("ok");
+    expect(out).toContain("ran all 1200");
+  });
+});
+
 describe("helpers", () => {
   test("the served Pyodide version matches the installed package", () => {
     const pkg = JSON.parse(readFileSync(`${pyodideDir}/package.json`, "utf8")) as { version: string };

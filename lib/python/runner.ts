@@ -10,11 +10,20 @@ export const WORK_DIR = "/home/pyodide/work";
 
 /** Python helpers installed once per runtime as the `_codecs_runner` module. */
 const RUNNER_SOURCE = String.raw`
+import ast
+import builtins
+import importlib.abc
+import importlib.machinery
+import importlib.util
 import os
 import sys
 import traceback
 
 WORK_DIR = ${JSON.stringify(WORK_DIR)}
+
+# Checks compile workspace modules with loop counters; never cache bytecode so
+# normal runs and checks can't pick up each other's compiled modules.
+sys.dont_write_bytecode = True
 
 
 def forget_workspace_modules():
@@ -41,8 +50,117 @@ def _print_student_traceback(exc):
     sys.stderr.write(text.replace(WORK_DIR + "/", ""))
 
 
-def run(entry):
-    """Run entry as __main__ in a fresh namespace. Returns ok, error or stopped."""
+LOOP_LIMIT = 1000
+
+
+class ObservationLimit(BaseException):
+    """Raised when a check has watched a loop for LOOP_LIMIT rounds."""
+
+
+class _LoopCounter:
+    def __init__(self):
+        self.rounds = {}
+
+    def tick(self, loop_id, outermost):
+        count = self.rounds.get(loop_id, 0) + 1
+        self.rounds[loop_id] = count
+        # Rounds are counted at the start of the loop body, so exactly
+        # LOOP_LIMIT rounds finish before the check stops the program.
+        if outermost and count > LOOP_LIMIT:
+            raise ObservationLimit()
+
+
+class _LoopInstrumenter(ast.NodeTransformer):
+    """Adds a counter call at the start of every loop body.
+
+    Only outermost loops (not inside another loop in the same function) stop
+    the check, so a finite inner loop inside an endless one never ends the run
+    early, and an endless outer loop always does. Iterations are counted, not
+    printed lines.
+    """
+
+    def __init__(self, prefix):
+        self.prefix = prefix
+        self.depth = 0
+        self.next_id = 0
+
+    def _loop(self, node):
+        outermost = self.depth == 0
+        loop_id = f"{self.prefix}:{self.next_id}"
+        self.next_id += 1
+        self.depth += 1
+        self.generic_visit(node)
+        self.depth -= 1
+        call = ast.Call(
+            func=ast.Name(id="__codecs_tick__", ctx=ast.Load()),
+            args=[ast.Constant(loop_id), ast.Constant(outermost)],
+            keywords=[],
+        )
+        tick = ast.Expr(call)
+        ast.copy_location(tick, node.body[0] if node.body else node)
+        node.body.insert(0, tick)
+        return node
+
+    visit_For = visit_While = visit_AsyncFor = _loop
+
+    def _scope(self, node):
+        saved = self.depth
+        self.depth = 0
+        self.generic_visit(node)
+        self.depth = saved
+        return node
+
+    visit_FunctionDef = visit_AsyncFunctionDef = visit_Lambda = visit_ClassDef = _scope
+
+
+def _instrumented_code(source, filename):
+    tree = ast.parse(source, filename)
+    tree = _LoopInstrumenter(filename).visit(tree)
+    ast.fix_missing_locations(tree)
+    return compile(tree, filename, "exec")
+
+
+class _ObservedLoader(importlib.machinery.SourceFileLoader):
+    # Always compile from source: a cached .pyc would skip the loop counters.
+    def get_code(self, fullname):
+        source = importlib.util.decode_source(self.get_data(self.path))
+        return _instrumented_code(source, self.path)
+
+
+class _ObservedFinder(importlib.abc.MetaPathFinder):
+    """Imports workspace modules with loop counters during a check."""
+
+    def find_spec(self, name, path, target=None):
+        if path is not None:
+            return None
+        candidate = os.path.join(WORK_DIR, name + ".py")
+        if not os.path.isfile(candidate):
+            return None
+        return importlib.util.spec_from_file_location(
+            name, candidate, loader=_ObservedLoader(name, candidate)
+        )
+
+
+def _run_observed(entry):
+    with open(entry, encoding="utf-8") as handle:
+        code = _instrumented_code(handle.read(), entry)
+    finder = _ObservedFinder()
+    builtins.__codecs_tick__ = _LoopCounter().tick
+    sys.meta_path.insert(0, finder)
+    try:
+        exec(code, {"__name__": "__main__", "__file__": entry, "__builtins__": builtins})
+    finally:
+        sys.meta_path.remove(finder)
+        del builtins.__codecs_tick__
+        forget_workspace_modules()
+
+
+def run(entry, observe_loops=False):
+    """Run entry as __main__ in a fresh namespace.
+
+    Returns ok, error, stopped, or limit (a check stopped an endless loop
+    after LOOP_LIMIT rounds, which is not an error).
+    """
     import runpy
 
     os.chdir(WORK_DIR)
@@ -50,8 +168,13 @@ def run(entry):
         sys.path.insert(0, WORK_DIR)
     forget_workspace_modules()
     try:
-        runpy.run_path(entry, run_name="__main__")
+        if observe_loops:
+            _run_observed(entry)
+        else:
+            runpy.run_path(entry, run_name="__main__")
         return "ok"
+    except ObservationLimit:
+        return "limit"
     except KeyboardInterrupt:
         return "stopped"
     except SystemExit as exc:
@@ -102,11 +225,19 @@ function removeTree(pyodide: PyodideAPI, dir: string) {
   fs.rmdir(dir);
 }
 
-/** Runs the entry file. Output goes to whatever stdout/stderr Pyodide has. */
-export function runEntry(pyodide: PyodideAPI, entry: string): RunOutcome {
+/**
+ * Runs the entry file. Output goes to whatever stdout/stderr Pyodide has.
+ * With `observeLoops` (checks for endless-loop exercises), every outermost
+ * loop stops the program after 1,000 rounds and the outcome is "limit".
+ */
+export function runEntry(
+  pyodide: PyodideAPI,
+  entry: string,
+  options: { observeLoops?: boolean } = {},
+): RunOutcome {
   const runner = pyodide.pyimport("_codecs_runner");
   try {
-    return runner.run(entry) as RunOutcome;
+    return runner.run(entry, options.observeLoops ?? false) as RunOutcome;
   } finally {
     runner.destroy();
   }

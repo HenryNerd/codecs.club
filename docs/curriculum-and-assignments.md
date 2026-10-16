@@ -29,13 +29,34 @@ Check behavior/output rather than equality with a model source-code solution. Ea
 
 Ignore spaces, tabs, and line breaks while preserving non-whitespace content and order. Preserve original formatting in the console. This agreed rule can equate differently spaced strings; it is not token-aware comparison or source-code equality.
 
+Implemented part kinds (`convex/lib/evaluation.ts`), all on the output with whitespace removed from both sides:
+
+| Kind | Met when |
+| --- | --- |
+| Output begins with | the output starts with the expected text |
+| Output contains, in order | the expected text appears as one unbroken run anywhere in the output (other output may come before or after it) |
+| Output ends with | the output ends with the expected text |
+| Output equals | the output is exactly the expected text |
+
+Unmet parts carry a reason built from the expected text's words and the printed word at the first difference, e.g. “expected “9” after “10”, got “8””, “expected the output to end with “Liftoff!”, got “Liftoff””, or “your program printed nothing”.
+
 ### Infinite-loop checks
 
 Observe up to **1,000 loop iterations** and compare expected repeated output. An intentional stop at the observation limit must not make matching work incorrect. Preserve code/output and distinguish checking stops from execution errors.
 
-Iterations, output lines, and characters are different measures. One loop body may print zero, one, or multiple lines. Do not substitute a line cap for the agreed iteration limit. Instrumentation for counting the intended loop, including nested loops, still needs verification.
+Iterations, output lines, and characters are different measures. One loop body may print zero, one, or multiple lines. Do not substitute a line cap for the agreed iteration limit.
+
+Implemented for assignments with the infinite-loop check on: the check compiles the student's files with a counter at the start of every loop body (including loops in imported workspace files). Each **outermost** loop (not inside another loop in the same function) stops the program when it begins round 1,001, so exactly 1,000 rounds finish; finite inner loops inside an endless loop never stop it early. The run ends as “stopped on purpose”, which is not an error, and the output so far is evaluated. Rounds are counted, not lines (tested with two prints per round, nested loops and silent loops). With the check on, every outermost loop is limited to 1,000 rounds, so it should only be enabled for endless-loop exercises.
 
 Bounded observation cannot prove arbitrary code runs forever. Straightforward loop patterns may be recognized where behavior can be established; universal infinite-loop verification is not promised. Output matching is sufficient for the intended learning workflow.
+
+### Running a check
+
+- The program runs in the student's browser (Phase 4 runtime). Convex first pins the saved working copy as a version (reusing the latest version when nothing changed, otherwise adding a “Checked” version), then evaluates the printed output against the assignment's **published** parts and stores the result with that version and revision. Printed output only (not errors) is evaluated; up to 20,000 characters are kept on the result for review.
+- `input()` reads the assignment's check input one line per call (`assignmentRevisions.checkInput`), then empty lines; checks never wait for typing.
+- A check run is stopped after **10 seconds**; parts are then evaluated against the output so far and the result says the program didn't finish. Programs that end with an error are evaluated the same way and say so.
+- A result is shown as stale (and dimmed) when the code changed after it, including unsaved edits, or when the published task changed. Stopping a check yourself records nothing.
+- No anti-cheating is attempted; output matching is the agreed rule.
 
 ## Independent states
 

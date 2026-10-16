@@ -4,7 +4,7 @@ A provider-hosted Python learning workspace replacing Colab for two persistent g
 
 ## Status
 
-Phases 1, 3 and 4 of the [roadmap](docs/roadmap.md) are built: the design system from the approved **CodeCS Basic v2** design, every student and admin route, the Convex schema, sign-in (student login codes and admin passwords via Convex Auth), and the student workspace with a CodeMirror editor, autosave, version history and Python that runs in the browser (Pyodide: Run, Stop, `input()`, packages). The learning home, lesson day, admin roster/attendance and curriculum scheduling read live Convex data. My work, the assignment editor, assistance and review still show sample data behind a “Preview” banner. Guided checks, turn-in, review and teacher assistance are not built yet.
+Phases 1, 3, 4 and 5 of the [roadmap](docs/roadmap.md) are built: the design system from the approved **CodeCS Basic v2** design, every student and admin route, the Convex schema, sign-in (student login codes and admin passwords via Convex Auth), and the student workspace with a CodeMirror editor, autosave, version history, Python that runs in the browser (Pyodide: Run, Stop, `input()`, packages), and guided checks that compare output with the task (whitespace ignored, partial completion, endless loops watched for 1,000 rounds). The learning home, lesson day, admin roster/attendance and curriculum scheduling read live Convex data. My work, the assignment editor, assistance and review still show sample data behind a “Preview” banner. Turn-in, review and teacher assistance are not built yet.
 
 ## Documentation
 

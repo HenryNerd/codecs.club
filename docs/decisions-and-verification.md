@@ -45,7 +45,7 @@ Do not silently invent approved defaults. Independent implementation work can pr
 | --- | --- | --- |
 | V01 | Browser runtime/package selection | Python fundamentals, lightweight modules, files/imports, repeated runs, compatible package installs. **Oct 15:** Pyodide 314.0.7 (Python 3.14.2) chosen and integrated; the default lesson modules, multi-file imports with reload, repeated fresh runs and a micropip install (`emoji`) pass on macOS (Node tests and a live browser check) |
 | V02 | School device/network | Cold/repeated startup and runtime/database/package/slide access on actual school Chromebook/network |
-| V03 | Stop and loop counting | Busy/infinite loops stop without UI freeze; nested loops and multiple/zero prints do not confuse iterations with lines. **Oct 15:** a printing infinite loop stopped by interrupt within 1 s in the browser with the page responsive; restart fallback unit-tested. Loop counting is Phase 5 |
+| V03 | Stop and loop counting | Busy/infinite loops stop without UI freeze; nested loops and multiple/zero prints do not confuse iterations with lines. **Oct 15:** a printing infinite loop stopped by interrupt within 1 s in the browser with the page responsive; restart fallback unit-tested. **Oct 15 (Phase 5):** loop observation counts rounds, not lines: exactly 1,000 rounds for an endless greeter, 2,000 lines for two prints per round, 3,000 for a nested finite loop, silent loops and loops in imported files stop too (real Pyodide tests); a live check of the greeter stopped as planned |
 | V04 | Collaboration/presence/restores | Two browsers converge; disconnects, concurrent edits/restores preserve work |
 | V05 | Remote Run routing | Correct version/actor; explicit busy/offline/late-result behavior |
 | V06 | Auth integration/access | Hashes/sessions; negative student/admin access tests; recovery consistent with D02. **Oct 15:** Convex Auth chosen (student `ConvexCredentials` + admin `Password`); sign-in round trips and refusals pass in `convex-test`; not yet exercised against the deployed backend |
@@ -57,6 +57,18 @@ Do not silently invent approved defaults. Independent implementation work can pr
 | V12 | Release readiness | Correct backend/env, auth origins, hosting headers/assets, domain and smoke test |
 
 SDK installation and documentation examples are not evidence of working application features. Pyodide is integrated but remains subject to Chromebook and school-network tests (V02).
+
+## Checks performed — October 15, 2026 (Phase 5 guided evaluation, macOS)
+
+| Check | Result |
+| --- | --- |
+| Convex codegen + function typecheck / lint / typecheck / production build | Passed |
+| Unit/integration tests | `npm test`: 80 passed. New: 9 evaluation-rule tests (spacing ignored, the design's count-by-2 bug partial with “expected “9” after “10”, got “8””, missing “!” fails only the ending, equals/extra output, empty output, contains with surrounding output, classification and explanations); 5 loop-observation tests with real Pyodide; 3 runtime check tests (stdout capture and loop limit, timeout, Stop not counted as timeout); 3 Convex check tests (version pinning and reuse, server evaluation and stale-after-edit, loop exercises get observation and check input, refusals for open-ended work, another student, a foreign version and a changed task) |
+| Browser check (dev deployment) | As `jsmith`: Countdown v14 checked in 0.8 s; Convex reported no completion with “expected “9” after “10”, got “8”” on the first two parts (this deployment still has the older seeded part `begins "10 9"`; a fresh seed uses `begins "10"`, which makes the bug partial as in the design). Forever greeter (opened for the check): the greeter was watched for 1,000 rounds and stopped on purpose, ✓ Completion on a new “Checked” v2, with the planned-stop note. A check of `sum(range(10**12))` couldn’t be interrupted, so Python restarted after the 10 s limit plus 2 s grace and the result said the program didn’t finish. Editing after a check showed the stale notice. Fixed during the check: the `input()` prompt was lost when a check had to restart Python, so output is now flushed on every `input()` in check mode |
+| Development data | Jordan now has a Forever greeter workspace (greeter code, versions v1–v4, latest check complete) and new check results on Countdown v14. Countdown's code wasn't changed |
+| Not checked | Chromebook speed for 1,000-round checks; checks with packages on school networks |
+
+Scenario 6 (assignment-specific thresholds and whitespace normalization yield explainable outcomes) now has unit, `convex-test` and live evidence; not marked passed end to end until turn-in and review exist.
 
 ## Checks performed — October 15, 2026 (Phase 4 Python runtime, macOS)
 

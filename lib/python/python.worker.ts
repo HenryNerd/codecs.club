@@ -31,6 +31,8 @@ let stdinControl: Int32Array | null = null;
 let stdinData: Uint8Array | null = null;
 let currentRunId = 0;
 let batcher: OutputBatcher | null = null;
+/** During a check, input() reads these lines, then empty lines; never blocks. */
+let checkInputs: string[] | null = null;
 /** Packages micropip has installed in this runtime (lost on restart). */
 const installed = new Set<string>();
 /** Messages are handled one at a time, in order. */
@@ -58,6 +60,12 @@ function writer(stream: OutputStream) {
 
 /** Blocks until the workspace sends a line for input(), or Stop is pressed. */
 function readLine(): string | null {
+  if (checkInputs !== null) {
+    // Send the prompt now: if the program hangs afterwards and Python has to
+    // be restarted, buffered output would otherwise be lost.
+    batcher?.flush();
+    return checkInputs.shift() ?? "";
+  }
   if (stdinControl === null || stdinData === null) {
     batcher?.write(
       "stderr",
@@ -140,11 +148,14 @@ async function run(message: Extract<ToWorker, { type: "run" }>) {
     await ensurePackages(message.packages);
     await loadImportedPackages(pyodide, message.files, packageStatus);
     writeWorkspace(pyodide, message.files);
+    checkInputs = message.check ? [...message.check.inputs] : null;
     started = performance.now();
-    outcome = runEntry(pyodide, message.entry);
+    outcome = runEntry(pyodide, message.entry, { observeLoops: message.check?.observeLoops ?? false });
   } catch (error) {
     batcher.write("stderr", `${String(error)}\n`);
     outcome = "error";
+  } finally {
+    checkInputs = null;
   }
   batcher.flush();
   if (interrupt) interrupt[0] = 0;

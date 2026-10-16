@@ -44,6 +44,18 @@ The visual reference is the Claude Design project **CodeCS Basic v2**, saved at 
 | Schema | Additive only: `workspaces.packages` (optional string array) |
 | Tests | `npm test`: real Pyodide in Node (output, module reload, fresh runs, tracebacks, syntax errors, input(), exit codes, interrupting an infinite loop, the default lesson modules), output batching and trimming, runtime client Stop/restart/input/load-failure paths with a fake worker, package-list ownership and validation |
 
+## Phase 5 — Guided evaluation (built)
+
+| Area | What exists |
+| --- | --- |
+| Rules | `convex/lib/evaluation.ts`: whitespace-insensitive begins / contains in order / ends / equals, readable reasons for unmet parts, completion / partial (assignment minimum) / no completion, outcome explanations. Shared by Convex and the UI (`lib/evaluation.ts` re-exports it) |
+| Loop observation | `lib/python/runner.ts`: with the infinite-loop check on, loop bodies get counters (also in imported workspace files); outermost loops stop after 1,000 rounds as a planned stop (`"limit"`), never an error |
+| Check flow | Run check (guided only) saves, calls `checks.prepare` (pins the saved files as a version; adds a “Checked” version only when needed), runs in check mode (check input fed to `input()`, 10 s limit, printed output captured), then `checks.record` evaluates on the server against the published revision and stores parts, outcome, run outcome and the start of the output |
+| Check panel | Latest result with “for vN · time”, met / not yet with reasons, the overall explanation, notes for error / loop limit / timeout, and a stale notice when the code or task changed since |
+| Schema | Additive only: `workVersions.reason` gains `"check"`; `checkResults.runOutcome`, `output`, `outputTruncated`; `assignmentRevisions.checkInput` |
+| Seed | Countdown's first part is now `begins "10"` (so the design's count-by-2 bug is partial); Forever greeter and Mad libs get check input. Existing deployments keep their seeded parts |
+| Tests | Evaluation rules incl. the design's examples; loop observation with real Pyodide (exactly 1,000 rounds, rounds not lines, nested and silent loops, imported modules, line numbers kept, no counters left for normal runs); runtime check capture/limit/timeout/stop; Convex check flow (version pinning and reuse, server evaluation, stale after edits, loop input, open-ended / other student / foreign version / changed task refused) |
+
 ## Later phases
 
 Each phase is its own piece of work. Screens move off fixtures as their phase lands; the fixture shapes already match the planned query results.
@@ -53,7 +65,7 @@ Each phase is its own piece of work. Screens move off fixtures as their phase la
 | 2. Student path, live | My work from real workspaces/submissions/feedback; historical context labels; past-curriculum access | — |
 | 3. Editor and persistence | Built (see above); checked live against the dev deployment on October 15, 2026 | — |
 | 4. Python runtime | Built (see above); checked live against the dev deployment on October 15, 2026. Still needs Chromebook/school-network tests | V01–V03 device tests |
-| 5. Guided evaluation | Whitespace-stripped part matching (begins / contains in order / ends / equals); partial rule; loop observation up to 1,000 iterations incl. nested loops; results tied to code version and revision; stale-result labels | V03 |
+| 5. Guided evaluation | Built (see above); checked live against the dev deployment on October 15, 2026 | — |
 | 6. Turn-in and review | Idempotent snapshot submissions after a confirmed save; server-enforced cutoff; review queue, expected vs actual, optional student feedback and private notes, Mark reviewed, new-attempt states | D09 |
 | 7. Admin content | Cover image upload (file storage); assignment authoring with revisions, drafts and publishing | D04, D08 |
 | 8. Admin students | Roster import with preview; printable login tickets; history for every write | D03 |

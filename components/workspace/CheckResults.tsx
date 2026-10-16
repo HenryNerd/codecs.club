@@ -1,6 +1,7 @@
 import { Pill } from "@/components/ui/Pill";
+import { explainOutcome, type PartResult } from "@/convex/lib/evaluation";
 
-export type CheckPart = { name: string; met: boolean; detail?: string };
+export type CheckPart = PartResult;
 
 const outcomeLabel = {
   complete: { text: "✓ Completion", tone: "mint" as const },
@@ -43,18 +44,4 @@ export function CheckResults({
       </span>
     </div>
   );
-}
-
-export function explainOutcome(
-  outcome: "complete" | "partial" | "none",
-  met: number,
-  total: number,
-  partialMin: number,
-): string {
-  if (outcome === "complete") return `All ${total} parts met.`;
-  if (outcome === "partial") {
-    const left = total - met;
-    return `${met} of ${total} parts met, enough for partial. Fix the last ${left === 1 ? "part" : `${left} parts`} for completion.`;
-  }
-  return `${met} of ${total} parts met. Partial needs ${partialMin}.`;
 }

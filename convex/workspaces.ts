@@ -34,6 +34,7 @@ const versionReasonValidator = v.union(
   v.literal("restore"),
   v.literal("teacher"),
   v.literal("submit"),
+  v.literal("check"),
 );
 
 const versionSummaryValidator = v.object({
@@ -46,7 +47,7 @@ const versionSummaryValidator = v.object({
 });
 
 /** The caller's own workspace. Someone else's id reads as not found. */
-async function requireOwnWorkspace(
+export async function requireOwnWorkspace(
   ctx: AuthCtx,
   workspaceId: Id<"workspaces">,
 ): Promise<{ userId: Id<"users">; student: Doc<"students">; workspace: Doc<"workspaces"> }> {
@@ -93,7 +94,7 @@ async function openableAssignment(
   return { assignment, day, revision, workspace };
 }
 
-async function workingFiles(
+export async function workingFiles(
   ctx: Pick<QueryCtx, "db">,
   workspaceId: Id<"workspaces">,
 ): Promise<Doc<"workFiles">[]> {
@@ -104,7 +105,7 @@ async function workingFiles(
   return files.sort((a, b) => compareFileNames(a.name, b.name));
 }
 
-async function latestVersion(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">) {
+export async function latestVersion(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">) {
   return await ctx.db
     .query("workVersions")
     .withIndex("by_workspaceId_and_number", (q) => q.eq("workspaceId", workspaceId))
@@ -112,7 +113,7 @@ async function latestVersion(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspa
     .first();
 }
 
-function snapshot(files: ReadonlyArray<File>): File[] {
+export function snapshot(files: ReadonlyArray<File>): File[] {
   return files
     .map((f) => ({ name: f.name, content: f.content }))
     .sort((a, b) => compareFileNames(a.name, b.name));

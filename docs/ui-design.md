@@ -97,7 +97,7 @@ The approved reference is the Claude Design project **CodeCS Basic v2**, saved i
 | `/` | Home / Login (4a) | Live sign-in |
 | `/learn` | Student Learning Home (4b) | Live |
 | `/learn/days/[dayId]` | Lesson Day (4c) | Live |
-| `/learn/assignments/[assignmentId]` | Assignment Workspace (4d) | Live editor and autosave (Phase 3) and Python Run/Stop/input/packages (Phase 4); Check, Turn in and Help later |
+| `/learn/assignments/[assignmentId]` | Assignment Workspace (4d) | Live editor and autosave (Phase 3), Python Run/Stop/input/packages (Phase 4) and guided checks (Phase 5); Turn in and Help later |
 | `/learn/work` | Student Work History (4e) | Preview fixtures (Phase 2) |
 | `/admin/students` | Admin / Students (4f) | Live roster, attendance, student edits |
 | `/admin/curriculum` | Admin / Curriculum and Lessons (4g) | Live timeline, day content, lesson dates |

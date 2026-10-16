@@ -5,7 +5,8 @@
  */
 export type OutputStream = "stdout" | "stderr";
 export type OutputChunk = { stream: OutputStream; text: string };
-export type RunOutcome = "ok" | "error" | "stopped";
+/** "limit": a check stopped an endless loop after 1,000 rounds, as planned. */
+export type RunOutcome = "ok" | "error" | "stopped" | "limit";
 export type RunFile = { name: string; content: string };
 
 export type ToWorker =
@@ -19,7 +20,15 @@ export type ToWorker =
       stdinControl: SharedArrayBuffer | null;
       stdinData: SharedArrayBuffer | null;
     }
-  | { type: "run"; runId: number; files: RunFile[]; entry: string; packages: string[] }
+  | {
+      type: "run";
+      runId: number;
+      files: RunFile[];
+      entry: string;
+      packages: string[];
+      /** Checks feed input() from `inputs` and may observe loops. */
+      check: { observeLoops: boolean; inputs: string[] } | null;
+    }
   | { type: "install"; requestId: number; name: string };
 
 export type FromWorker =

@@ -16,9 +16,9 @@ Convex is the required persistent backend. The conceptual records below map to t
 | App Settings | Admin-editable approved behavior, including turn-in timing configuration | `settings` |
 | Assignment | Guided/open-ended task, publication state, named requirements, expected checks, and assignment-specific partial-completion rule where applicable | `assignments`, `assignmentRevisions` |
 | Student Work | Student files, autosave state, environment details, assignment and historical context | `workspaces`, `workFiles` |
-| Work Version | Recoverable prior files with creator/time context | `workVersions` |
+| Work Version | Recoverable prior files with creator/time context and why it was made (start, autosave, restore, check, …) | `workVersions` |
 | Submission | Final saved snapshot, submission time, assignment/schedule context | `submissions` |
-| Guided Check Result | Requirement-level outcomes and overall classification tied to the specific work version and evaluation-rule version | `checkResults` |
+| Guided Check Result | Requirement-level outcomes and overall classification tied to the specific work version and evaluation-rule version, plus how the check run ended and the start of its output | `checkResults` |
 | Feedback | Teacher response tied to reviewed work (student-visible) | `feedback` (`visibility: "student"`) |
 | Review Note | Admin-only note associated with student work or review | `feedback` (`visibility: "private"`) |
 | Help Request | Student, assignment, alert and resolution state | `helpRequests` |

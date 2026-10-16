@@ -23,6 +23,12 @@ export const MAX_RUN_OUTPUT_CHARS = 2_000_000;
 /** Most output kept on screen; older output is trimmed from the top. */
 export const MAX_VISIBLE_OUTPUT_CHARS = 200_000;
 
+/** A check run is stopped after this long (endless loops normally stop at 1,000 rounds first). */
+export const CHECK_TIME_LIMIT_MS = 10_000;
+
+/** Most printed output a check sends for evaluation. */
+export const MAX_CHECK_OUTPUT_CHARS = 200_000;
+
 /** How long Stop waits for Python to interrupt itself before restarting it. */
 export const STOP_GRACE_MS = 2_000;
 

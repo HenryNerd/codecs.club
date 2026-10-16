@@ -22,6 +22,12 @@ export const attendanceStatusValidator = v.union(
   v.literal("absent"),
 );
 export const fileValidator = v.object({ name: v.string(), content: v.string() });
+export const checkRunOutcomeValidator = v.union(
+  v.literal("ok"),
+  v.literal("error"),
+  v.literal("limit"),
+  v.literal("timeout"),
+);
 
 export default defineSchema({
   ...authTables,
@@ -127,6 +133,8 @@ export default defineSchema({
     /** Parts needed for partial completion; completion always needs all. */
     partialMin: v.number(),
     loopCheck: v.boolean(),
+    /** Lines fed to input() during checks, one per call; empty lines after that. */
+    checkInput: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
   }).index("by_assignmentId", ["assignmentId"]),
@@ -175,6 +183,7 @@ export default defineSchema({
       v.literal("restore"),
       v.literal("teacher"),
       v.literal("submit"),
+      v.literal("check"),
     ),
     /** For reason "restore": the version number that was restored. */
     restoredFrom: v.optional(v.number()),
@@ -191,6 +200,11 @@ export default defineSchema({
     ),
     ranBy: v.id("users"),
     ranAt: v.number(),
+    /** How the check run ended: finished, error, stopped at the loop limit, or out of time. */
+    runOutcome: v.optional(checkRunOutcomeValidator),
+    /** The printed output that was checked (start only, if long). */
+    output: v.optional(v.string()),
+    outputTruncated: v.optional(v.boolean()),
   })
     .index("by_workspaceId_and_ranAt", ["workspaceId", "ranAt"])
     .index("by_versionId", ["versionId"]),

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { STOP_GRACE_MS } from "./config";
+import { CHECK_TIME_LIMIT_MS, STOP_GRACE_MS } from "./config";
 import type { FromWorker, ToWorker } from "./protocol";
 import { PythonRuntime, type WorkerLike } from "./runtime";
 
@@ -106,6 +106,44 @@ describe("PythonRuntime", () => {
     expect(control[1]).toBe(3);
     expect(new TextDecoder().decode(new Uint8Array(init.stdinData!).slice(0, 3))).toBe("Ada");
     expect(runtime.getSnapshot().output.at(-1)).toMatchObject({ kind: "input", text: "Ada\n" });
+  });
+
+  test("a check captures printed output (not errors) and passes the loop limit through", async () => {
+    const { runtime, workers } = setup(true);
+    const pending = runtime.check(files, "main.py", [], { observeLoops: true, inputs: ["Ada"] });
+    const run = workers[0]!.posted.find((m) => m.type === "run");
+    expect(run).toMatchObject({ check: { observeLoops: true, inputs: ["Ada"] } });
+    expect(runtime.getSnapshot().status).toMatchObject({ kind: "running", mode: "check" });
+    workers[0]!.emit({
+      type: "output",
+      runId: 1,
+      chunks: [
+        { stream: "stdout", text: "Hello, Ada\n" },
+        { stream: "stderr", text: "warning\n" },
+      ],
+    });
+    workers[0]!.emit({ type: "done", runId: 1, outcome: "limit", ms: 40 });
+    await expect(pending).resolves.toEqual({ outcome: "limit", output: "Hello, Ada\n", truncated: false, ms: 40 });
+    expect(runtime.getSnapshot().lastRun).toMatchObject({ mode: "check", outcome: "limit" });
+  });
+
+  test("a check that runs too long is stopped and reported as a timeout", async () => {
+    const { runtime, workers } = setup(true);
+    const pending = runtime.check(files, "main.py", [], { observeLoops: false, inputs: [] });
+    workers[0]!.emit({ type: "output", runId: 1, chunks: [{ stream: "stdout", text: "so far\n" }] });
+    vi.advanceTimersByTime(CHECK_TIME_LIMIT_MS + 1);
+    expect(runtime.getSnapshot().status.kind).toBe("stopping");
+    workers[0]!.emit({ type: "done", runId: 1, outcome: "stopped", ms: CHECK_TIME_LIMIT_MS });
+    await expect(pending).resolves.toMatchObject({ outcome: "timeout", output: "so far\n" });
+    expect(runtime.getSnapshot().lastRun).toMatchObject({ timedOut: true });
+  });
+
+  test("Stop during a check reports it as stopped, not a timeout", async () => {
+    const { runtime, workers } = setup(false);
+    const pending = runtime.check(files, "main.py", [], { observeLoops: false, inputs: [] });
+    runtime.stop();
+    expect(workers).toHaveLength(2);
+    await expect(pending).resolves.toMatchObject({ outcome: "stopped" });
   });
 
   test("a failed load shows Python as unavailable until retried", () => {

@@ -1,4 +1,6 @@
 import {
+  CHECK_TIME_LIMIT_MS,
+  MAX_CHECK_OUTPUT_CHARS,
   MAX_VISIBLE_OUTPUT_CHARS,
   PYODIDE_INDEX_PATH,
   PYODIDE_PACKAGE_BASE_URL,
@@ -28,7 +30,7 @@ export type RuntimeStatus =
   | { kind: "idle" }
   | { kind: "loading"; step: string }
   | { kind: "ready" }
-  | { kind: "running"; startedAt: number; waitingForInput: boolean }
+  | { kind: "running"; mode: "run" | "check"; startedAt: number; waitingForInput: boolean }
   | { kind: "stopping" }
   | { kind: "installing"; name: string }
   | { kind: "unavailable"; message: string };
@@ -37,8 +39,27 @@ export type LastRun = {
   outcome: RunOutcome;
   ms: number;
   entry: string;
+  mode: "run" | "check";
   /** Stop had to restart Python because it didn't interrupt in time. */
   restarted: boolean;
+  /** A check hit its time limit (rather than the student pressing Stop). */
+  timedOut: boolean;
+};
+
+/** How a check run ended, with the printed output to evaluate. */
+export type CheckRunResult = {
+  outcome: "ok" | "error" | "limit" | "timeout" | "stopped" | "unavailable";
+  output: string;
+  truncated: boolean;
+  ms: number;
+};
+
+type PendingCheck = {
+  resolve: (result: CheckRunResult) => void;
+  output: string;
+  truncated: boolean;
+  timedOut: boolean;
+  timer: ReturnType<typeof setTimeout>;
 };
 
 export type RuntimeSnapshot = {
@@ -88,6 +109,7 @@ export class PythonRuntime {
   private requestId = 0;
   private stopTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly installs = new Map<number, PendingInstall>();
+  private pendingCheck: PendingCheck | null = null;
   private owner: string | null = null;
   private snapshot: RuntimeSnapshot;
 
@@ -176,6 +198,7 @@ export class PythonRuntime {
   }
 
   private failLoad(detail: string) {
+    this.finishCheck("unavailable", 0);
     this.worker?.terminate();
     this.worker = null;
     console.error("Python failed to load:", detail);
@@ -198,7 +221,10 @@ export class PythonRuntime {
         return;
       case "output":
         if (message.runId !== this.runId) return;
-        for (const chunk of message.chunks) this.log.append(chunk);
+        for (const chunk of message.chunks) {
+          this.log.append(chunk);
+          if (chunk.stream === "stdout") this.capture(chunk.text);
+        }
         this.update({});
         return;
       case "output-dropped":
@@ -212,19 +238,25 @@ export class PythonRuntime {
       case "package-status":
         this.update({ packageStatus: message.text });
         return;
-      case "done":
+      case "done": {
         if (message.runId !== this.runId) return;
         this.clearStopTimer();
+        const timedOut = this.pendingCheck?.timedOut ?? false;
+        const mode = this.pendingCheck ? "check" : "run";
         this.update({
           status: { kind: "ready" },
           lastRun: {
             outcome: message.outcome,
             ms: message.ms,
             entry: this.snapshot.currentEntry ?? "",
+            mode,
             restarted: false,
+            timedOut,
           },
         });
+        this.finishCheck(timedOut && message.outcome === "stopped" ? "timeout" : message.outcome, message.ms);
         return;
+      }
       case "install-result": {
         const pending = this.installs.get(message.requestId);
         this.installs.delete(message.requestId);
@@ -239,18 +271,85 @@ export class PythonRuntime {
   /** Runs `entry` with these files. Only when Python is ready. */
   run(files: RunFile[], entry: string, packages: string[]) {
     if (this.worker === null || this.snapshot.status.kind !== "ready") return;
+    this.startRun(files, entry, packages, null);
+  }
+
+  /**
+   * Runs the program for a guided check: input() reads `inputs`, endless loops
+   * may be observed for 1,000 rounds, and the run stops after the time limit.
+   * Resolves with the printed output to evaluate.
+   */
+  check(
+    files: RunFile[],
+    entry: string,
+    packages: string[],
+    options: { observeLoops: boolean; inputs: string[] },
+  ): Promise<CheckRunResult> {
+    if (this.worker === null || this.snapshot.status.kind !== "ready") {
+      return Promise.resolve({ outcome: "unavailable", output: "", truncated: false, ms: 0 });
+    }
+    return new Promise((resolve) => {
+      this.pendingCheck = {
+        resolve,
+        output: "",
+        truncated: false,
+        timedOut: false,
+        timer: setTimeout(() => {
+          if (this.pendingCheck === null) return;
+          this.pendingCheck.timedOut = true;
+          this.stop();
+        }, CHECK_TIME_LIMIT_MS),
+      };
+      this.startRun(files, entry, packages, options);
+    });
+  }
+
+  private startRun(
+    files: RunFile[],
+    entry: string,
+    packages: string[],
+    check: { observeLoops: boolean; inputs: string[] } | null,
+  ) {
     this.runId += 1;
     this.runStartedAt = Date.now();
     this.log.clear();
     if (this.interrupt) this.interrupt[0] = 0;
     this.update({
-      status: { kind: "running", startedAt: this.runStartedAt, waitingForInput: false },
+      status: {
+        kind: "running",
+        mode: check ? "check" : "run",
+        startedAt: this.runStartedAt,
+        waitingForInput: false,
+      },
       currentEntry: entry,
       lastRun: null,
       outputDropped: false,
       packageStatus: null,
     });
-    this.worker.postMessage({ type: "run", runId: this.runId, files, entry, packages } satisfies ToWorker);
+    this.worker!.postMessage({
+      type: "run",
+      runId: this.runId,
+      files,
+      entry,
+      packages,
+      check,
+    } satisfies ToWorker);
+  }
+
+  private capture(text: string) {
+    const check = this.pendingCheck;
+    if (check === null || check.truncated) return;
+    const room = MAX_CHECK_OUTPUT_CHARS - check.output.length;
+    check.output += text.slice(0, room);
+    if (text.length > room) check.truncated = true;
+  }
+
+  private finishCheck(outcome: CheckRunResult["outcome"], ms: number) {
+    const check = this.pendingCheck;
+    if (check === null) return;
+    this.pendingCheck = null;
+    clearTimeout(check.timer);
+    check.resolve({ outcome, output: check.output, truncated: check.truncated, ms });
   }
 
   /** Sends one line to a program waiting in input(). */
@@ -290,6 +389,10 @@ export class PythonRuntime {
   private restartAfterStop() {
     this.clearStopTimer();
     const entry = this.snapshot.currentEntry ?? "";
+    const timedOut = this.pendingCheck?.timedOut ?? false;
+    const mode = this.pendingCheck ? "check" : "run";
+    const ms = Date.now() - this.runStartedAt;
+    this.finishCheck(timedOut ? "timeout" : "stopped", ms);
     this.terminate();
     this.log.append({
       stream: "stderr",
@@ -297,7 +400,7 @@ export class PythonRuntime {
       text: "\nPython was restarted to stop your program. Your files are safe; variables from this run are gone.\n",
     });
     this.update({
-      lastRun: { outcome: "stopped", ms: Date.now() - this.runStartedAt, entry, restarted: true },
+      lastRun: { outcome: "stopped", ms, entry, mode, restarted: true, timedOut },
     });
     this.spawn();
   }
@@ -308,6 +411,7 @@ export class PythonRuntime {
   }
 
   private terminate() {
+    this.finishCheck("stopped", Date.now() - this.runStartedAt);
     this.worker?.terminate();
     this.worker = null;
     this.runId += 1; // Ignore anything the old worker still had queued.
