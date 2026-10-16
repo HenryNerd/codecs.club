@@ -30,6 +30,20 @@ The visual reference is the Claude Design project **CodeCS Basic v2**, saved at 
 | Schema | Additive only: `workFiles.revision` (optional), `workVersions.reason` gains `"start"`, `workVersions.restoredFrom` (optional) |
 | Tests | `npm test`: workspace ownership refusals (save/versions/version/restore), drafts and other curricula refused, starter copy as v1, checkpoint spacing, restore keeps history, cross-tab overwrite kept in history, file rules; autosave engine states, retry, offline, echo/merge rules |
 
+## Phase 4 — Python runtime (built)
+
+| Area | What exists |
+| --- | --- |
+| Runtime | Pyodide **314.0.7** (Python 3.14.2) in a module Web Worker (`lib/python/python.worker.ts`). The core is self-hosted from `public/pyodide/314.0.7/` (copied from the npm package); optional packages load on demand from the matching jsDelivr release. Python starts loading when a workspace opens and is shared by every workspace in the tab |
+| Build | `scripts/prepare-python.mjs` (runs before `dev`/`build`, or `npm run python:build`) copies the runtime and bundles the worker with esbuild to `public/python/worker.js`. Next's bundler starts workers as classic scripts, which Pyodide refuses |
+| Run | Runs `main.py` if present, else the shown `.py` file, using the editor's current text. Each run starts from a fresh namespace with exactly the workspace's files on disk, so edited modules reload and deleted files disappear. Tracebacks hide runner frames and show `main.py`-relative file names |
+| Stop | Site-wide `Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy: credentialless` give the worker shared memory. Stop writes SIGINT to the interrupt buffer; if Python hasn’t stopped within 2 s (or the page isn’t isolated) the worker is restarted and the output says variables were cleared. Files are never affected |
+| input() | Blocks the worker on a shared buffer; the Output panel shows an input line, echoes the typed text after the prompt, and Stop cancels the wait. Without isolation, input() prints a clear message and gets no input |
+| Output | Batched in the worker (every 50 ms or 16 KB), at most 2 MB forwarded per run; the panel keeps the newest 200 KB and says when output was trimmed or the limit was reached. Errors in coral, typed input in mint; footer shows Running / Finished / Stopped with an error / Stopped after N s |
+| Packages | Packages popover installs with micropip; failures are explained (compiled code not available, not found, offline). Installed packages are saved on the workspace (`workspaces.packages`, `workspaces.setPackages`) and reinstalled before runs after a restart. Pyodide-built packages imported by the code (e.g. numpy) load on demand. Package progress shows in its own status line, not in program output |
+| Schema | Additive only: `workspaces.packages` (optional string array) |
+| Tests | `npm test`: real Pyodide in Node (output, module reload, fresh runs, tracebacks, syntax errors, input(), exit codes, interrupting an infinite loop, the default lesson modules), output batching and trimming, runtime client Stop/restart/input/load-failure paths with a fake worker, package-list ownership and validation |
+
 ## Later phases
 
 Each phase is its own piece of work. Screens move off fixtures as their phase lands; the fixture shapes already match the planned query results.
@@ -38,7 +52,7 @@ Each phase is its own piece of work. Screens move off fixtures as their phase la
 | --- | --- | --- |
 | 2. Student path, live | My work from real workspaces/submissions/feedback; historical context labels; past-curriculum access | — |
 | 3. Editor and persistence | Built (see above); checked live against the dev deployment on October 15, 2026 | — |
-| 4. Python runtime | Pyodide in a Web Worker; runtime states; Stop via interrupt buffer with terminate/restart fallback; batched output; micropip with clear unsupported errors; check cross-origin-isolation headers against storage images and slide links | V01–V03 device tests |
+| 4. Python runtime | Built (see above); checked live against the dev deployment on October 15, 2026. Still needs Chromebook/school-network tests | V01–V03 device tests |
 | 5. Guided evaluation | Whitespace-stripped part matching (begins / contains in order / ends / equals); partial rule; loop observation up to 1,000 iterations incl. nested loops; results tied to code version and revision; stale-result labels | V03 |
 | 6. Turn-in and review | Idempotent snapshot submissions after a confirmed save; server-enforced cutoff; review queue, expected vs actual, optional student feedback and private notes, Mark reviewed, new-attempt states | D09 |
 | 7. Admin content | Cover image upload (file storage); assignment authoring with revisions, drafts and publishing | D04, D08 |

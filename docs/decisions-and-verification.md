@@ -43,9 +43,9 @@ Do not silently invent approved defaults. Independent implementation work can pr
 
 | ID | Work item | Required evidence |
 | --- | --- | --- |
-| V01 | Browser runtime/package selection | Python fundamentals, lightweight modules, files/imports, repeated runs, compatible package installs |
+| V01 | Browser runtime/package selection | Python fundamentals, lightweight modules, files/imports, repeated runs, compatible package installs. **Oct 15:** Pyodide 314.0.7 (Python 3.14.2) chosen and integrated; the default lesson modules, multi-file imports with reload, repeated fresh runs and a micropip install (`emoji`) pass on macOS (Node tests and a live browser check) |
 | V02 | School device/network | Cold/repeated startup and runtime/database/package/slide access on actual school Chromebook/network |
-| V03 | Stop and loop counting | Busy/infinite loops stop without UI freeze; nested loops and multiple/zero prints do not confuse iterations with lines |
+| V03 | Stop and loop counting | Busy/infinite loops stop without UI freeze; nested loops and multiple/zero prints do not confuse iterations with lines. **Oct 15:** a printing infinite loop stopped by interrupt within 1 s in the browser with the page responsive; restart fallback unit-tested. Loop counting is Phase 5 |
 | V04 | Collaboration/presence/restores | Two browsers converge; disconnects, concurrent edits/restores preserve work |
 | V05 | Remote Run routing | Correct version/actor; explicit busy/offline/late-result behavior |
 | V06 | Auth integration/access | Hashes/sessions; negative student/admin access tests; recovery consistent with D02. **Oct 15:** Convex Auth chosen (student `ConvexCredentials` + admin `Password`); sign-in round trips and refusals pass in `convex-test`; not yet exercised against the deployed backend |
@@ -56,7 +56,18 @@ Do not silently invent approved defaults. Independent implementation work can pr
 | V11 | Tooling readiness | Correct ESLint integration, generated route types, passing lint/typecheck/build |
 | V12 | Release readiness | Correct backend/env, auth origins, hosting headers/assets, domain and smoke test |
 
-SDK installation and documentation examples are not evidence of working application features. Pyodide remains a technical decision within scope, subject to compatibility tests.
+SDK installation and documentation examples are not evidence of working application features. Pyodide is integrated but remains subject to Chromebook and school-network tests (V02).
+
+## Checks performed — October 15, 2026 (Phase 4 Python runtime, macOS)
+
+| Check | Result |
+| --- | --- |
+| Convex codegen + function typecheck | Passed |
+| Lint / typecheck / production build | Passed; the build bundles the worker (`public/python/worker.js`, minified) and copies Pyodide |
+| Unit/integration tests | `npm test`: 60 passed. New: 13 runner tests with real Pyodide 314.0.7 in Node (stdout, `__main__`, imports and reload after edits, fresh namespace and deleted files, tracebacks without runner frames or the work folder path, syntax errors, `input()` with prompt, `sys.exit` codes, interrupting an infinite printing loop after 50 lines with output kept, `math/random/statistics/decimal/fractions/collections/itertools/json/csv` with a CSV file), 5 output batching/trimming tests, 6 runtime-client tests with a fake worker (current-run output only, interrupt then keep Python, restart after the grace period, restart-only when not isolated, typed input through shared memory, load failure and retry), 2 package-list tests (save/read, bad names, duplicates, another student refused) |
+| Browser check (dev server, dev deployment) | Signed in as the seeded student `jsmith` at 1366×768. The page reported `crossOriginIsolated: true`. First attempt failed with “Classic web workers are not supported” because Next started the worker as a classic script; fixed by bundling the worker separately. Then: “● Python ready” (Python 3.14.2); Countdown printed `10 8 6 4 2 Liftoff!` with “Finished in 0.01s · run by you · main.py”; an infinite printing loop reached the 2 MB per-run limit in about 3 s with the trimmed/limit notes, and Stop ended it in under 1 s without a restart; `input("Name? ")` showed the input line, focused it, echoed “Name? Ada”, then printed a `ZeroDivisionError` traceback pointing at `main.py` line 3 with the Error pill; installing `emoji` took about 2 s and saved it to the workspace; `psycopg2-binary` was refused with the compiled-code message; after a reload the saved package reinstalled before the run and printed “Python is 👍”. Fixed during the check: duplicate element ids for the input line and package field |
+| Development data | The check temporarily changed `jsmith`’s Loop art `main.py` and package list, then restored the original code and removed the package (extra versions remain in its history). Countdown was only run, not edited |
+| Not checked | Safari/non-isolated fallback in a real browser (unit-tested only); Chromebook performance and school-network access to jsDelivr/PyPI (V02) |
 
 ## Checks performed — October 15, 2026 (Phase 3 editor and persistence, macOS)
 
@@ -73,6 +84,8 @@ SDK installation and documentation examples are not evidence of working applicat
 | Development deployment | Pushed by the developer (`npx convex dev --once`), then auth keys, an admin and the seed were set up. The check left a Loop art workspace for `jsmith` (5 versions, 3 files). Someone else signed in as `jsmith` (the developer or another session) also created a workspace with `print("Hello")` and an empty `helpers.py` on a third assignment during the check; it is not from this check |
 | Production data | Not inspected or modified |
 | Device/load tests | Not performed |
+
+Scenario 7 (loop/output floods stop; restart preserves files) now has unit and live-browser evidence for Stop and output limits; loop counting is Phase 5.
 
 Scenario 5 (save/resume/disconnect) now has unit and `convex-test` evidence for autosave, offline buffering and restore; it is not marked passed end to end.
 

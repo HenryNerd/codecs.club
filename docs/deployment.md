@@ -87,7 +87,13 @@ npm test
 npm run build
 ```
 
-`npm test` runs Convex functions in memory with `convex-test` (no deployment needed). `npx convex codegen --typecheck enable` regenerates `convex/_generated` and typechecks `convex/`.
+`npm test` runs Convex functions in memory with `convex-test` and real Pyodide in Node for the runner tests (no deployment needed). `npx convex codegen --typecheck enable` regenerates `convex/_generated` and typechecks `convex/`.
+
+## In-browser Python
+
+`npm run dev` and `npm run build` first run `scripts/prepare-python.mjs`, which copies the Pyodide core from `node_modules/pyodide` to `public/pyodide/<version>/` and bundles the Python worker to `public/python/worker.js` (both git-ignored). After changing `lib/python/python.worker.ts` or anything it imports while the dev server runs, run `npm run python:build` and reload the page.
+
+`next.config.ts` sends `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: credentialless` on every page so Stop and input() can use shared memory; `/pyodide/*` is cached as immutable and `/python/*` is revalidated on each load. Hosting must keep these headers and serve `.wasm` as `application/wasm`. Students’ browsers need `cdn.jsdelivr.net` for optional packages and PyPI for micropip installs; the standard library needs neither.
 
 ## Managed release direction
 

@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/prepare-python.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/prepare-python.mjs --minify",
     "build": "next build",
+    "python:build": "node scripts/prepare-python.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit --incremental false",
@@ -25,6 +28,7 @@
     "@lezer/highlight": "^1.2.5",
     "convex": "^1.46.0",
     "next": "16.4.0",
+    "pyodide": "^314.0.7",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
@@ -35,6 +39,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "convex-test": "^0.0.62",
+    "esbuild": "^0.27.0",
     "eslint": "^10.12.0",
     "eslint-config-next": "16.4.0",
     "jose": "^6.2.12",

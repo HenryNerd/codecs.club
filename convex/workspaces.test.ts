@@ -272,3 +272,44 @@ describe("assignment workspace", () => {
     await save("data.csv", "a,b\n1,2\n");
   });
 });
+
+describe("workspace packages", () => {
+  test("a student records packages for their own workspace and get returns them", async () => {
+    const { t, jordan, assignmentId } = await setup();
+    const student = as(t, jordan.userId);
+    const loopArt = await assignmentId("Loop art");
+    const workspaceId = await student.mutation(api.workspaces.open, { assignmentId: loopArt });
+
+    const saved = await student.mutation(api.workspaces.setPackages, {
+      workspaceId,
+      packages: [" emoji ", "art==6.4"],
+    });
+    expect(saved).toEqual(["emoji", "art==6.4"]);
+    const data = await student.query(api.workspaces.get, { assignmentId: loopArt });
+    expect(data?.workspace?.packages).toEqual(["emoji", "art==6.4"]);
+  });
+
+  test("bad names, duplicates and other students' workspaces are refused", async () => {
+    const { t, jordan, priya, assignmentId } = await setup();
+    const loopArt = await assignmentId("Loop art");
+    const workspaceId = await as(t, jordan.userId).mutation(api.workspaces.open, {
+      assignmentId: loopArt,
+    });
+
+    await expect(
+      as(t, jordan.userId).mutation(api.workspaces.setPackages, {
+        workspaceId,
+        packages: ["emoji; rm -rf /"],
+      }),
+    ).rejects.toThrow(/package name/);
+    await expect(
+      as(t, jordan.userId).mutation(api.workspaces.setPackages, {
+        workspaceId,
+        packages: ["Emoji", "emoji==2.0"],
+      }),
+    ).rejects.toThrow(/listed twice/);
+    await expect(
+      as(t, priya.userId).mutation(api.workspaces.setPackages, { workspaceId, packages: ["emoji"] }),
+    ).rejects.toThrow(/not found/);
+  });
+});

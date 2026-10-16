@@ -140,6 +140,8 @@ export default defineSchema({
     curriculumId: v.id("curricula"),
     latestVersion: v.number(),
     updatedAt: v.number(),
+    /** micropip packages this workspace installs before running (e.g. "emoji==2.12.1"). */
+    packages: v.optional(v.array(v.string())),
   })
     .index("by_studentId_and_assignmentId", ["studentId", "assignmentId"])
     .index("by_studentId_and_updatedAt", ["studentId", "updatedAt"])

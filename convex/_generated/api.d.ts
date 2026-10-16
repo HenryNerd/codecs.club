@@ -20,6 +20,7 @@ import type * as lib_access from "../lib/access.js";
 import type * as lib_changes from "../lib/changes.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_loginCodes from "../lib/loginCodes.js";
+import type * as lib_packages from "../lib/packages.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as lib_time from "../lib/time.js";
 import type * as lib_workFiles from "../lib/workFiles.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   "lib/changes": typeof lib_changes;
   "lib/errors": typeof lib_errors;
   "lib/loginCodes": typeof lib_loginCodes;
+  "lib/packages": typeof lib_packages;
   "lib/rateLimits": typeof lib_rateLimits;
   "lib/time": typeof lib_time;
   "lib/workFiles": typeof lib_workFiles;

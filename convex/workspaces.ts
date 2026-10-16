@@ -4,6 +4,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { getSettings, requireStudent } from "./lib/access";
 import { appError } from "./lib/errors";
+import { MAX_PACKAGES, packageKey, packageSpecProblem } from "./lib/packages";
 import {
   byteLength,
   compareFileNames,
@@ -167,6 +168,7 @@ export const get = query({
           _id: v.id("workspaces"),
           latestVersion: v.number(),
           updatedAt: v.number(),
+          packages: v.array(v.string()),
           files: v.array(
             v.object({ name: v.string(), content: v.string(), revision: v.number() }),
           ),
@@ -218,6 +220,7 @@ export const get = query({
         _id: workspace._id,
         latestVersion: workspace.latestVersion,
         updatedAt: workspace.updatedAt,
+        packages: workspace.packages ?? [],
         files: files.map((f) => ({ name: f.name, content: f.content, revision: revisionOf(f) })),
       },
     };
@@ -539,5 +542,31 @@ export const restore = mutation({
     });
     await ctx.db.patch("workspaces", workspace._id, { latestVersion: number, updatedAt: now });
     return { number };
+  },
+});
+
+/**
+ * Records the Python packages this workspace installs before each run, so
+ * reopening it (or restarting Python) brings them back.
+ */
+export const setPackages = mutation({
+  args: { workspaceId: v.id("workspaces"), packages: v.array(v.string()) },
+  returns: v.array(v.string()),
+  handler: async (ctx, args) => {
+    const { workspace } = await requireOwnWorkspace(ctx, args.workspaceId);
+    const packages = args.packages.map((p) => p.trim()).filter((p) => p.length > 0);
+    if (packages.length > MAX_PACKAGES) {
+      throw appError("INVALID", `A workspace can use at most ${MAX_PACKAGES} packages.`);
+    }
+    const seen = new Set<string>();
+    for (const spec of packages) {
+      const problem = packageSpecProblem(spec);
+      if (problem !== null) throw appError("INVALID", `${spec}: ${problem}`);
+      const key = packageKey(spec);
+      if (seen.has(key)) throw appError("INVALID", `${spec.split("==")[0]} is listed twice.`);
+      seen.add(key);
+    }
+    await ctx.db.patch("workspaces", workspace._id, { packages });
+    return packages;
   },
 });

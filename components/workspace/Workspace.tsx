@@ -10,6 +10,7 @@ import {
   useState,
   type ChangeEvent,
   type FormEvent,
+  type ReactNode,
   type RefObject,
 } from "react";
 import { useStudentViewer } from "@/components/auth/ViewerContext";
@@ -33,10 +34,16 @@ import { cn } from "@/lib/cn";
 import { errorMessage } from "@/lib/errors";
 import { formatWeekdayDateTime } from "@/lib/format";
 import { renderInlineMarkdown } from "@/lib/inlineMarkdown";
+import { ENTRY_FILE } from "@/lib/python/config";
+import { chooseEntry } from "@/lib/python/runner";
 import { useNow } from "@/lib/useNow";
 import type { WorkspaceSync } from "@/lib/workspaceSync";
 import { CodeEditor, type CodeEditorHandle } from "./CodeEditor";
+import { OutputPanel } from "./OutputPanel";
+import { PackagesButton } from "./PackagesPanel";
+import { RunControls } from "./RunControls";
 import { SaveStatusPill } from "./SaveStatusPill";
+import { usePythonRuntime } from "./usePythonRuntime";
 import { ConnectionWatcher, useLeaveGuard, useWorkspaceSync } from "./useWorkspaceSync";
 import { VersionsPanel, VersionView } from "./VersionsPanel";
 
@@ -49,8 +56,9 @@ const LATER = "Not available yet.";
 
 /**
  * 4d. Assignment workspace: the task beside a Python editor whose files save
- * to Convex as the student types. Opening an assignment the first time copies
- * its published starter files. Run, Check, Turn in and Help come later.
+ * to Convex as the student types, and Run executes them in Python in the
+ * browser. Opening an assignment the first time copies its published starter
+ * files. Check, Turn in and Help come later.
  */
 export function Workspace({ assignmentId }: { assignmentId: string }) {
   const data = useQuery(api.workspaces.get, { assignmentId });
@@ -104,6 +112,7 @@ function WorkspaceScreen({ data }: { data: LoadedWorkspace }) {
   const viewer = useStudentViewer();
   const { assignment, day, workspace, timeZone, turnIn } = data;
   const { sync, snapshot } = useWorkspaceSync(workspace);
+  const { runtime, py } = usePythonRuntime(workspace._id);
   const guardLeave = useLeaveGuard(sync);
   const restoreVersion = useMutation(api.workspaces.restore);
   const editor = useRef<CodeEditorHandle>(null);
@@ -127,6 +136,17 @@ function WorkspaceScreen({ data }: { data: LoadedWorkspace }) {
   const offline = snapshot.status.kind === "offline";
   const firstName = viewer.name.split(" ")[0] ?? viewer.name;
   const dayHref = day.inCurrentCurriculum ? `/learn/days/${day._id}` : "/learn/work";
+  const runTarget = chooseEntry(fileNames, inspecting === null ? shownFile : null, ENTRY_FILE);
+
+  /** Runs the files as they are in the editor now (saved or not). */
+  const runProgram = () => {
+    if (runTarget === null) {
+      setMessage({ tone: "error", text: "Add a .py file to run." });
+      return;
+    }
+    const files = fileNames.map((name) => ({ name, content: sync.content(name) ?? "" }));
+    runtime.run(files, runTarget, workspace.packages);
+  };
 
   const showFile = (name: string) => {
     setInspecting(null);
@@ -281,6 +301,24 @@ function WorkspaceScreen({ data }: { data: LoadedWorkspace }) {
             shownFile={inspecting === null ? shownFile : null}
             onShow={showFile}
             onMessage={setMessage}
+            packagesButton={
+              <PackagesButton
+                workspaceId={workspace._id}
+                packages={workspace.packages}
+                runtime={runtime}
+                status={py.status}
+              />
+            }
+            runControls={
+              <RunControls
+                status={py.status}
+                entry={py.currentEntry}
+                runTarget={runTarget}
+                onRun={runProgram}
+                onStop={() => runtime.stop()}
+                onRetry={() => runtime.restart()}
+              />
+            }
           />
 
           <Notices
@@ -314,14 +352,7 @@ function WorkspaceScreen({ data }: { data: LoadedWorkspace }) {
           </div>
 
           <div className="grid h-[232px] flex-none grid-cols-2 bg-code-bar">
-            <section aria-label="Output" className="flex min-w-0 flex-col border-r border-ln">
-              <div className="flex h-[42px] flex-none items-center gap-2.5 px-4">
-                <b className="text-sm font-bold">Output</b>
-              </div>
-              <p className="m-0 flex-1 px-4 text-sm text-ink3">
-                Running Python isn’t available yet. When it is, your program’s output shows here.
-              </p>
-            </section>
+            <OutputPanel runtime={runtime} py={py} />
             <section aria-label="Check" className="flex min-w-0 flex-col">
               <div className="flex h-[42px] flex-none items-center gap-2.5 px-4">
                 <b className="text-sm font-bold">Check</b>
@@ -405,7 +436,7 @@ function FilesPanel({
   );
 }
 
-/** File tabs, new file, upload and download, plus the (later) runtime controls. */
+/** File tabs, new file, upload and download, packages, and the Run/Stop controls. */
 function EditorBar({
   sync,
   editor,
@@ -413,6 +444,8 @@ function EditorBar({
   shownFile,
   onShow,
   onMessage,
+  packagesButton,
+  runControls,
 }: {
   sync: WorkspaceSync;
   editor: RefObject<CodeEditorHandle | null>;
@@ -420,6 +453,8 @@ function EditorBar({
   shownFile: string | null;
   onShow: (name: string) => void;
   onMessage: (message: Message | null) => void;
+  packagesButton: ReactNode;
+  runControls: ReactNode;
 }) {
   const [naming, setNaming] = useState(false);
   const [newName, setNewName] = useState("");
@@ -611,18 +646,10 @@ function EditorBar({
         <Button variant="ghost" size="sm" onClick={download} title={`Download ${shownFile ?? "this file"}`}>
           Download
         </Button>
-        <Button variant="ghost" size="sm" disabled title={LATER}>
-          Packages
-        </Button>
+        {packagesButton}
       </span>
       <span aria-hidden="true" className="mx-1.5 h-[22px] w-px flex-none bg-ln" />
-      <span className="flex-none text-[13px] font-semibold text-ink3">○ Python not loaded</span>
-      <Button variant="primary" size="md" className="ml-1.5 px-[18px]" disabled title={LATER}>
-        ▶ Run
-      </Button>
-      <Button variant="secondary" size="md" disabled>
-        ■ Stop
-      </Button>
+      {runControls}
     </div>
   );
 }
