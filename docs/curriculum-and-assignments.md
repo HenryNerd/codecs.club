@@ -79,7 +79,8 @@ Run success does not imply completion; completion does not imply submission. A n
 - Each attempt preserves snapshot, time, applicable results, and feedback. Admins see every submission and return.
 - Returning work does not bypass a closed cutoff. Admins can adjust the cutoff; editing/history/feedback remain accessible after closing.
 - Save failures cannot produce successful submission messages; retries must not create duplicate attempts.
-- Another submission before an earlier attempt is returned is not yet specified.
+- Turning in again before an earlier attempt is reviewed is allowed (D09): it adds an attempt, the teacher reviews the latest, and the earlier unreviewed attempt stays visible to admins (`superseded`) but leaves the review queue.
+- An attempt carries the guided check of exactly its files when one exists; otherwise review shows it as not checked. Written feedback is optional and student-visible; a private note is admin-only (D07).
 
 ## Dates and published edits
 

@@ -138,7 +138,7 @@ function authorNamer(ctx: Pick<QueryCtx, "db">, student: Doc<"students">) {
   };
 }
 
-/** Task, turn-in context and the working copy for one assignment. */
+/** Task and the working copy for one assignment (turn-in is `submissions.forWorkspace`). */
 export const get = query({
   args: { assignmentId: v.string() },
   returns: v.union(
@@ -158,10 +158,6 @@ export const get = query({
         topic: v.string(),
         slidesUrl: v.union(v.string(), v.null()),
         inCurrentCurriculum: v.boolean(),
-      }),
-      turnIn: v.object({
-        closesAt: v.union(v.number(), v.null()),
-        attempts: v.number(),
       }),
       workspace: v.union(
         v.null(),
@@ -183,19 +179,6 @@ export const get = query({
     if (found === null) return null;
     const { assignment, day, revision, workspace } = found;
     const settings = await getSettings(ctx);
-    const schedule = await ctx.db
-      .query("lessonSchedules")
-      .withIndex("by_dayId_and_year", (q) =>
-        q.eq("dayId", day._id).eq("year", workspace?.year ?? settings.currentYear),
-      )
-      .unique();
-    const latestSubmission = workspace
-      ? await ctx.db
-          .query("submissions")
-          .withIndex("by_workspaceId_and_attempt", (q) => q.eq("workspaceId", workspace._id))
-          .order("desc")
-          .first()
-      : null;
     const files = workspace ? await workingFiles(ctx, workspace._id) : [];
     return {
       timeZone: settings.timeZone,
@@ -212,10 +195,6 @@ export const get = query({
         topic: day.topic,
         slidesUrl: day.slidesUrl ?? null,
         inCurrentCurriculum: day.curriculumId === student.curriculumId,
-      },
-      turnIn: {
-        closesAt: schedule?.turnInClosesAt ?? null,
-        attempts: latestSubmission?.attempt ?? 0,
       },
       workspace: workspace && {
         _id: workspace._id,

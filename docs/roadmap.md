@@ -14,7 +14,7 @@ The visual reference is the Claude Design project **CodeCS Basic v2**, saved at 
 | Backend | Full Convex schema (`convex/schema.ts`), role checks (`convex/lib/access.ts`), login-code allocation, time-zone helpers, admin change history, seed of the design's sample school |
 | Sign-in | Convex Auth: student login code (`ConvexCredentials`, rate-limited) and admin username/password (`Password`, sign-up refused; accounts created with `admins:createAdmin`) |
 | Live screens | Learning home, Lesson day, Admin Students (roster, attendance, group/curriculum/login-code changes), Admin Curriculum (timeline, day content, lesson dates), Settings (read-only), History |
-| Preview screens | My work, Assignments editor, Assistance, Review render sample data from `lib/fixtures.ts` behind a visible “Preview” banner; nothing on them is saved (the Workspace went live in Phase 3) |
+| Preview screens | My work, Assignments editor, Assistance, Review render sample data from `lib/fixtures.ts` behind a visible “Preview” banner; nothing on them is saved (the Workspace went live in Phase 3, Review in Phase 6) |
 | Tests | `npm test`: login codes, sign-in round trips, student/admin access refusals, reassignment history, turn-in close time zones, partial rule |
 
 ## Phase 3 — Editor and persistence (built)
@@ -56,6 +56,21 @@ The visual reference is the Claude Design project **CodeCS Basic v2**, saved at 
 | Seed | Countdown's first part is now `begins "10"` (so the design's count-by-2 bug is partial); Forever greeter and Mad libs get check input. Existing deployments keep their seeded parts |
 | Tests | Evaluation rules incl. the design's examples; loop observation with real Pyodide (exactly 1,000 rounds, rounds not lines, nested and silent loops, imported modules, line numbers kept, no counters left for normal runs); runtime check capture/limit/timeout/stop; Convex check flow (version pinning and reuse, server evaluation, stale after edits, loop input, open-ended / other student / foreign version / changed task refused) |
 
+## Phase 6 — Turn-in and review (built)
+
+| Area | What exists |
+| --- | --- |
+| Turn in | The workspace card saves first (a failed save never reports success), then `submissions.turnIn` pins the saved working copy: it reuses the latest version when the files are unchanged, otherwise adds a version with reason `submit`, and records the next attempt. Guided turn-ins carry the latest check of exactly those files (`checkResultId`); otherwise review says “Not checked” |
+| Retries | The card sends an idempotency key per Turn in click and keeps it until Convex answers, so a retry after a dropped connection returns the attempt already made (even if turn-in closed in between). A key from someone else's work is refused without revealing anything |
+| Cutoff | Enforced in the mutation: refused after the day's `lessonSchedules.turnInClosesAt` for the workspace's year; unscheduled days have no close. After the close the card says so and editing, Versions and feedback stay available |
+| Resubmitting (D09) | Turning in again before review adds an attempt and marks the earlier unreviewed one `superseded`: it stays visible to admins but leaves the queue and the Review badge. Only the latest attempt can be reviewed |
+| Turn-in card | Not turned in / Turned in, close date, attempt number, version and time, waiting for review or “Reviewed by … · date”, and the latest student-visible feedback with the attempt it was written on. Copy: “Sends your last saved version (vN). You can keep editing after.” (`submissions.forWorkspace`) |
+| Review screen | `/admin/review` is live for the selected group's newest curriculum: Day and Assignment pickers with waiting counts; a queue with one row per student (New attempt = an earlier attempt was reviewed, Unreviewed, Reviewed, Not turned in) with time and outcome; attempt tabs; the read-only submitted snapshot (file tabs when there are several); Expected vs Actual words compared (missing words mint, differing words coral); the check parts; “Not checked” when there is no result; “Open live working copy” links to Assistance for now |
+| Writing | Optional student-visible feedback and a private admin-only note (`feedback.visibility` `student` / `private`, D07). Mark reviewed saves both and sets `status`, `reviewedBy`, `reviewedAt`; on a reviewed attempt the button becomes Save changes (empty text removes a note; the review time is kept). Each review is recorded in History without the writing itself. Next → moves to the next waiting student. “Turn-in closes … Reviewing doesn’t extend it.” |
+| Where feedback shows | Learning home's latest feedback card (`student.home`, student-visible only) and the workspace turn-in card. Private notes are only returned by admin queries |
+| Schema | Additive only: `submissions.status` gains `"superseded"`. `workspaces.get` no longer returns `turnIn` (the card reads `submissions.forWorkspace`) |
+| Tests | `convex-test`: idempotent retry, cutoff refusal with editing and earlier retries still working, unscheduled days open, snapshot unchanged after later edits and a restore, guided turn-ins carry the matching check, resubmission supersedes (badge and queue count once), queue states, feedback visible to the student while the private note never is (card, home, history), admin-only review (student and anonymous refused), another student's work refused; word comparison for Expected vs Actual (a “…” in the expected output is never marked) |
+
 ## Later phases
 
 Each phase is its own piece of work. Screens move off fixtures as their phase lands; the fixture shapes already match the planned query results.
@@ -66,7 +81,7 @@ Each phase is its own piece of work. Screens move off fixtures as their phase la
 | 3. Editor and persistence | Built (see above); checked live against the dev deployment on October 15, 2026 | — |
 | 4. Python runtime | Built (see above); checked live against the dev deployment on October 15, 2026. Still needs Chromebook/school-network tests | V01–V03 device tests |
 | 5. Guided evaluation | Built (see above); checked live against the dev deployment on October 15, 2026 | — |
-| 6. Turn-in and review | Idempotent snapshot submissions after a confirmed save; server-enforced cutoff; review queue, expected vs actual, optional student feedback and private notes, Mark reviewed, new-attempt states | D09 |
+| 6. Turn-in and review | Built (see above); checked live against the dev deployment on October 15–16, 2026 (student and admin) | — |
 | 7. Admin content | Cover image upload (file storage); assignment authoring with revisions, drafts and publishing | D04, D08 |
 | 8. Admin students | Roster import with preview; printable login tickets; history for every write | D03 |
 | 9. Assistance | Presence (online/idle/offline); help requests and queue; seat assignment; join/leave notifications; collaborative editing with labeled cursors; guidance notes; attributed remote Run | V04, V05 |

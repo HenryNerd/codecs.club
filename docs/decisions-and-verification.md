@@ -26,6 +26,12 @@ Resolved on October 15, 2026 by approving the **CodeCS Basic v2** design ([`desi
 | D10 | Mint palette with amber/coral/violet status colors (violet = teacher), Open Sauce Sans with Geist Mono for code, light and dark themes, editor dark by default, designed for a 1366×768 Chromebook viewport. |
 | D11 | Attendance is Present, Late or Absent per student per lesson date (the group’s lesson schedule), separate from online presence. |
 
+Resolved on October 15, 2026 by the developer:
+
+| ID | Decision |
+| --- | --- |
+| D09 | A student may turn in again before an earlier attempt is reviewed. Each turn-in adds an attempt; the teacher reviews the latest. Earlier unreviewed attempts stay visible to admins (status `superseded`, shown as “replaced”) but leave the review queue and the Review badge. The cutoff still applies to every attempt. |
+
 ## Product decisions requiring input
 
 | ID | Decision | Needed before |
@@ -34,7 +40,6 @@ Resolved on October 15, 2026 by approving the **CodeCS Basic v2** design ([`desi
 | D03 | Spreadsheet columns/formats and stable returning-student match key | Roster import; avoid merging same-name people |
 | D04 | Future lessons available immediately versus admin release | Publication/student day list |
 | D08 | Published edits applied to existing work and any re-evaluation | Versioned assignment publication |
-| D09 | Resubmitting before an earlier attempt is returned | Submission lifecycle; approved rule covers after-return work |
 | D12 | Frontend provider, domain choice, and account ownership | Release |
 
 Do not silently invent approved defaults. Independent implementation work can proceed while the relevant decision remains pending.
@@ -50,13 +55,26 @@ Do not silently invent approved defaults. Independent implementation work can pr
 | V05 | Remote Run routing | Correct version/actor; explicit busy/offline/late-result behavior |
 | V06 | Auth integration/access | Hashes/sessions; negative student/admin access tests; recovery consistent with D02. **Oct 15:** Convex Auth chosen (student `ConvexCredentials` + admin `Password`); sign-in round trips and refusals pass in `convex-test`; not yet exercised against the deployed backend |
 | V07 | File/slide storage | Durable uploads/resume/download; appropriate ownership/access; actionable failures. **Oct 15:** workspace files are text rows (`workFiles`), not Convex file storage; upload/download of `.py/.txt/.csv/.json` with size limits and readable refusals built; not yet tested on a Chromebook |
-| V08 | Persistence/submission retry | No false saves; no duplicate attempts; immutable snapshots survive edits/moves. **Oct 15:** autosave shows Saved only after the save mutation resolves, keeps edits through failures/disconnects, and restores add versions without deleting any (unit and `convex-test` evidence); submissions not built yet |
+| V08 | Persistence/submission retry | No false saves; no duplicate attempts; immutable snapshots survive edits/moves. **Oct 15:** autosave shows Saved only after the save mutation resolves, keeps edits through failures/disconnects, and restores add versions without deleting any (unit and `convex-test` evidence). **Oct 15 (Phase 6):** Turn in saves first and reports success only after the mutation returns; a retry with the same idempotency key returns the existing attempt; submitted versions are unchanged after later edits and restores (`convex-test`); a live turn-in and resubmission made exactly one row each |
 | V09 | Capacity/provider plan | 50-student active-use checks plus admins; estimated retained files/versions/API use |
 | V10 | UI usability/accessibility | Keyboard/focus/contrast, panel resizing, Chromebook viewport, output flood |
 | V11 | Tooling readiness | Correct ESLint integration, generated route types, passing lint/typecheck/build |
 | V12 | Release readiness | Correct backend/env, auth origins, hosting headers/assets, domain and smoke test |
 
 SDK installation and documentation examples are not evidence of working application features. Pyodide is integrated but remains subject to Chromebook and school-network tests (V02).
+
+## Checks performed — October 15, 2026 (Phase 6 turn-in and review, macOS)
+
+| Check | Result |
+| --- | --- |
+| Convex codegen + function typecheck / lint / typecheck / production build | Passed |
+| Unit/integration tests | `npm test`: 94 passed. New: 9 `convex-test` tests (a retry with the same key returns the same attempt and a new click adds one; turn-in refused after the close while editing, the card and an earlier click's retry still work, and an unscheduled day has no close; the submitted version is unchanged after a later edit and a restore and review shows it as “not checked”; a guided turn-in carries the check of exactly the submitted version with its output; another student's workspace and someone else's idempotency key are refused; turning in again supersedes the waiting attempt so the badge and queue count it once and the old attempt can't be marked reviewed; queue states and waiting counts match the seeded design data; feedback reaches the student card and learning home while the private note never appears there or in History; review queries and Mark reviewed refuse students and anonymous callers) and 5 Expected vs Actual word-comparison tests |
+| Browser check, student (dev server, dev deployment) | The user's running `npx convex dev` had already synced the new functions and schema to `tidy-firefly-410` (checked read-only with `npx convex function-spec`). In the browser pane, already signed in as `jsmith`, at 1366×768: Countdown's card showed “Not turned in · Closes Thu Oct 29, 11:59 pm” and “Sends your last saved version (v14)”. Turn in made attempt 1 on v14 (“✓ Turned in v14 as attempt 1”, “waiting for review”); Turn in again made attempt 2 in 155 ms. `npx convex data submissions` (read-only) showed attempt 1 `superseded`, attempt 2 `unreviewed`, both with the v14 check attached. The learning home then showed Day 5 “1 of 3 turned in”. Name tag (Day 2) showed “Closed Thu Oct 8, 11:59 pm”, attempt 1 · v7, “Reviewed by Ms. Rivera · Sep 28”, the seeded feedback, a disabled button and the closed explanation, with the editor still usable. Fixed during the check: the card title wrapped at 372 px, so the attempt number moved to the detail line |
+| Browser check, admin (October 16) | Port 3000 was held by a 22-hour-old `next dev` from another terminal for this folder, so the preview couldn't start; it was stopped and the dev server restarted from `.claude/launch.json`. The developer signed in as admin in the pane. `/admin/review` (basic) opened on Day 5 · Countdown with “6 waiting for review”: Jordan (Unreviewed, attempt 2, no completion), Priya (New attempt, attempt 2, partial), Noah, Ava, Maya, Isla (Unreviewed), Owen (Reviewed), then 15 students Not turned in (Ethan “Working copy saved Oct 15”, others “Not started”); the Day picker also showed earlier days' seeded unreviewed work (1, 2, 1, 2 waiting). Jordan's tabs read “Attempt 1 · replaced / Attempt 2 · new” with “Attempt 1 · replaced by a later attempt before review”; the v14 snapshot, Expected `10 9 8 … 1 Liftoff!` against Actual `10 8 6 4 2 Liftoff!` with differing words marked, and the check parts with reasons. Priya's attempt showed “This check was recorded before output was kept” (seeded check). Mark reviewed with feedback and a private note turned Jordan's row Reviewed, the count to 5 and the sidebar badge to 11; the panel showed “✓ Reviewed by Ms. Rivera · Oct 16” with both texts kept and Save changes disabled until edited. Next → went Jordan → Priya → Noah. History recorded “Reviewed Jordan Smith’s Countdown, attempt 2” with `feedback: true, privateNote: true` and no text. Running the student queries as Jordan (`npx convex run … --identity`, read-only) returned the feedback on the card and the learning home, never the private note, and `review:queue` refused him. Fixed during the check: the task's “…” was marked as missing in Expected (elisions are now never marked), and marking a student reviewed jumped the view to the new first row (the selection now stays until Next) |
+| Development data | Jordan's Countdown now has attempts 1 (superseded) and 2 (reviewed, with test feedback “Close! Check how much count goes down each time through the loop.” and a private note “Phase 6 browser check: private note test.”) on v14, and a History entry for that review; its code wasn't changed. The pane is now signed in as admin |
+| Not checked | Turn-in from a Chromebook; a real network drop between the click and the answer (covered by the key logic and tests only) |
+
+Scenario 9 (turn-in captures saved files; retries/concurrent edits preserve distinct snapshots) and scenario 10 (resubmission; latest attempt stays unreviewed until reviewed) now have `convex-test` and live student and admin evidence; scenario 11 has server-side cutoff tests and a live closed card. None is marked passed end to end.
 
 ## Checks performed — October 15, 2026 (Phase 5 guided evaluation, macOS)
 

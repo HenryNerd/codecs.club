@@ -32,11 +32,9 @@ import {
 } from "@/convex/lib/workFiles";
 import { cn } from "@/lib/cn";
 import { errorMessage } from "@/lib/errors";
-import { formatWeekdayDateTime } from "@/lib/format";
 import { renderInlineMarkdown } from "@/lib/inlineMarkdown";
 import { ENTRY_FILE } from "@/lib/python/config";
 import { chooseEntry } from "@/lib/python/runner";
-import { useNow } from "@/lib/useNow";
 import type { WorkspaceSync } from "@/lib/workspaceSync";
 import { CheckPanel } from "./CheckPanel";
 import { CodeEditor, type CodeEditorHandle } from "./CodeEditor";
@@ -44,6 +42,7 @@ import { OutputPanel } from "./OutputPanel";
 import { PackagesButton } from "./PackagesPanel";
 import { RunControls } from "./RunControls";
 import { SaveStatusPill } from "./SaveStatusPill";
+import { TurnInCard } from "./TurnInCard";
 import { usePythonRuntime } from "./usePythonRuntime";
 import { ConnectionWatcher, useLeaveGuard, useWorkspaceSync } from "./useWorkspaceSync";
 import { VersionsPanel, VersionView } from "./VersionsPanel";
@@ -58,9 +57,9 @@ const LATER = "Not available yet.";
 /**
  * 4d. Assignment workspace: the task beside a Python editor whose files save
  * to Convex as the student types, and Run executes them in Python in the
- * browser. Guided work can be checked against the task. Opening an
- * assignment the first time copies its published starter files. Turn in and
- * Help come later.
+ * browser. Guided work can be checked against the task, and Turn in sends a
+ * saved snapshot for review. Opening an assignment the first time copies its
+ * published starter files. Help comes later.
  */
 export function Workspace({ assignmentId }: { assignmentId: string }) {
   const data = useQuery(api.workspaces.get, { assignmentId });
@@ -112,7 +111,7 @@ export function Workspace({ assignmentId }: { assignmentId: string }) {
 
 function WorkspaceScreen({ data }: { data: LoadedWorkspace }) {
   const viewer = useStudentViewer();
-  const { assignment, day, workspace, timeZone, turnIn } = data;
+  const { assignment, day, workspace, timeZone } = data;
   const { sync, snapshot } = useWorkspaceSync(workspace);
   const { runtime, py } = usePythonRuntime(workspace._id);
   const guardLeave = useLeaveGuard(sync);
@@ -122,7 +121,6 @@ function WorkspaceScreen({ data }: { data: LoadedWorkspace }) {
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
   const editor = useRef<CodeEditorHandle>(null);
-  const now = useNow(60_000);
   // Next keeps a left workspace mounted (hidden), so element ids must be per screen.
   const tabsId = `ws${useId()}`;
 
@@ -323,24 +321,12 @@ function WorkspaceScreen({ data }: { data: LoadedWorkspace }) {
             )}
           </TabPanel>
 
-          <div className="m-2.5 mt-0 flex flex-none flex-col gap-2.5 rounded-2xl bg-bg px-4 pt-3.5 pb-4">
-            <div className="flex items-baseline justify-between gap-2">
-              <b className="font-bold">
-                {turnIn.attempts > 0 ? `Turned in · attempt ${turnIn.attempts}` : "Not turned in"}
-              </b>
-              <span className="text-[13px] text-ink3">
-                {turnIn.closesAt === null
-                  ? "No turn-in date yet"
-                  : `${turnIn.closesAt > now ? "Closes" : "Closed"} ${formatWeekdayDateTime(turnIn.closesAt, timeZone)}`}
-              </span>
-            </div>
-            <Button variant="primary" className="h-[46px] w-full rounded-xl text-base" disabled title={LATER}>
-              Turn in
-            </Button>
-            <span className="text-[12.5px] text-ink3">
-              Turning in isn’t available yet. Your files save as you type.
-            </span>
-          </div>
+          <TurnInCard
+            workspaceId={workspace._id}
+            timeZone={timeZone}
+            sync={sync}
+            unsavedChanges={snapshot.files.some((f) => f.dirty)}
+          />
         </aside>
 
         <section

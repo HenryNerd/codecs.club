@@ -97,13 +97,13 @@ The approved reference is the Claude Design project **CodeCS Basic v2**, saved i
 | `/` | Home / Login (4a) | Live sign-in |
 | `/learn` | Student Learning Home (4b) | Live |
 | `/learn/days/[dayId]` | Lesson Day (4c) | Live |
-| `/learn/assignments/[assignmentId]` | Assignment Workspace (4d) | Live editor and autosave (Phase 3), Python Run/Stop/input/packages (Phase 4) and guided checks (Phase 5); Turn in and Help later |
+| `/learn/assignments/[assignmentId]` | Assignment Workspace (4d) | Live editor and autosave (Phase 3), Python Run/Stop/input/packages (Phase 4), guided checks (Phase 5), Turn in with attempts and feedback (Phase 6); Help later |
 | `/learn/work` | Student Work History (4e) | Preview fixtures (Phase 2) |
 | `/admin/students` | Admin / Students (4f) | Live roster, attendance, student edits |
 | `/admin/curriculum` | Admin / Curriculum and Lessons (4g) | Live timeline, day content, lesson dates |
 | `/admin/assignments`, `/admin/assignments/[assignmentId]` | Admin / Assignments (4h) | Preview fixtures (Phase 7) |
 | `/admin/assistance` | Admin / Assistance (4i) | Preview fixtures (Phase 9) |
-| `/admin/review` | Admin / Review (4j) | Preview fixtures (Phase 6) |
+| `/admin/review` | Admin / Review (4j) | Live queue, submitted snapshots, checks, feedback, private notes and Mark reviewed (Phase 6); “Open live working copy” goes to Assistance until Phase 9 |
 | `/admin/settings` | Settings (no design) | Live, read-only |
 | `/admin/history` | Change history (no design) | Live |
 

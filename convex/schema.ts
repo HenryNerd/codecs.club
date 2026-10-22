@@ -22,6 +22,11 @@ export const attendanceStatusValidator = v.union(
   v.literal("absent"),
 );
 export const fileValidator = v.object({ name: v.string(), content: v.string() });
+export const submissionStatusValidator = v.union(
+  v.literal("unreviewed"),
+  v.literal("reviewed"),
+  v.literal("superseded"),
+);
 export const checkRunOutcomeValidator = v.union(
   v.literal("ok"),
   v.literal("error"),
@@ -218,7 +223,11 @@ export default defineSchema({
     versionId: v.id("workVersions"),
     submittedAt: v.number(),
     checkResultId: v.optional(v.id("checkResults")),
-    status: v.union(v.literal("unreviewed"), v.literal("reviewed")),
+    /**
+     * "superseded": a later attempt was turned in before this one was
+     * reviewed (D09). It stays visible but leaves the review queue.
+     */
+    status: submissionStatusValidator,
     reviewedBy: v.optional(v.id("users")),
     reviewedAt: v.optional(v.number()),
     /** Client-generated key so a retried turn-in cannot create two attempts. */

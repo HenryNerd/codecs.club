@@ -26,9 +26,11 @@ import type * as lib_packages from "../lib/packages.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as lib_time from "../lib/time.js";
 import type * as lib_workFiles from "../lib/workFiles.js";
+import type * as review from "../review.js";
 import type * as seed from "../seed.js";
 import type * as student from "../student.js";
 import type * as students from "../students.js";
+import type * as submissions from "../submissions.js";
 import type * as viewer from "../viewer.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -57,9 +59,11 @@ declare const fullApi: ApiFromModules<{
   "lib/rateLimits": typeof lib_rateLimits;
   "lib/time": typeof lib_time;
   "lib/workFiles": typeof lib_workFiles;
+  review: typeof review;
   seed: typeof seed;
   student: typeof student;
   students: typeof students;
+  submissions: typeof submissions;
   viewer: typeof viewer;
   workspaces: typeof workspaces;
 }>;

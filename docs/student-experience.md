@@ -96,7 +96,7 @@ Teacher and student edit simultaneously, with labeled teacher cursors. The teach
 
 Turn in submits a final saved version for teacher checking and feedback. Preserve that version separately from later working-copy edits, so review refers to what was actually submitted.
 
-After review, the teacher can return work with feedback. The student can edit it, review it, and turn it in again. Each resubmission preserves the earlier submitted version and feedback and creates a new submitted snapshot; returned work is not permanently locked.
+After review, the teacher can return work with feedback. The student can edit it, review it, and turn it in again. Each resubmission preserves the earlier submitted version and feedback and creates a new submitted snapshot; returned work is not permanently locked. A student may also turn in again before review (D09); the teacher reviews the latest attempt.
 
 Resubmission after return is allowed for **completion, partial completion, and no completion** alike, up to the assignment's deadline. A fully completed assignment can still be improved and submitted again; its completion result must not disable resubmission.
 
