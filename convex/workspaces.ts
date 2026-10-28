@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { getSettings, requireStudent } from "./lib/access";
+import { adminFirstName } from "./lib/adminNames";
 import { appError } from "./lib/errors";
 import { MAX_PACKAGES, packageKey, packageSpecProblem } from "./lib/packages";
 import {
@@ -32,6 +33,7 @@ const versionReasonValidator = v.union(
   v.literal("start"),
   v.literal("autosave"),
   v.literal("restore"),
+  // Legacy stored literal for an edit made by an admin (see schema).
   v.literal("teacher"),
   v.literal("submit"),
   v.literal("check"),
@@ -121,18 +123,14 @@ export function snapshot(files: ReadonlyArray<File>): File[] {
 
 const revisionOf = (file: Doc<"workFiles">) => file.revision ?? 0;
 
-/** "you" for the student, otherwise the admin's display name. */
+/** "you" for the student, otherwise the admin's first name. */
 function authorNamer(ctx: Pick<QueryCtx, "db">, student: Doc<"students">) {
   const cache = new Map<Id<"users">, string>();
   return async (userId: Id<"users">): Promise<string> => {
     if (userId === student.userId) return "you";
     const cached = cache.get(userId);
     if (cached !== undefined) return cached;
-    const admin = await ctx.db
-      .query("admins")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .unique();
-    const name = admin?.displayName ?? "Teacher";
+    const name = await adminFirstName(ctx, userId);
     cache.set(userId, name);
     return name;
   };

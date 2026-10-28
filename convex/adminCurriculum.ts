@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { getSettings, requireAdmin } from "./lib/access";
 import { recordAdminChange } from "./lib/changes";
 import { appError } from "./lib/errors";
-import { parseClockTime, turnInCloseFor, zonedTimeToUtc } from "./lib/time";
+import { parseClockTime, zonedTimeToUtc } from "./lib/time";
 import { assignmentTypeValidator, groupValidator } from "./schema";
 
 const MAX_DAYS = 100;
@@ -19,8 +19,6 @@ export const overview = query({
     year: v.string(),
     currentYear: v.string(),
     timeZone: v.string(),
-    turnInDays: v.number(),
-    closeTime: v.string(),
     curricula: v.array(v.object({ _id: v.id("curricula"), name: v.string() })),
     curriculum: v.union(v.null(), v.object({ _id: v.id("curricula"), name: v.string() })),
     days: v.array(
@@ -32,11 +30,7 @@ export const overview = query({
         coverUrl: v.union(v.string(), v.null()),
         schedule: v.union(
           v.null(),
-          v.object({
-            _id: v.id("lessonSchedules"),
-            lessonAt: v.number(),
-            turnInClosesAt: v.number(),
-          }),
+          v.object({ _id: v.id("lessonSchedules"), lessonAt: v.number() }),
         ),
         assignments: v.array(
           v.object({
@@ -87,13 +81,7 @@ export const overview = query({
           topic: day.topic,
           slidesUrl: day.slidesUrl ?? null,
           coverUrl: day.coverImageId ? await ctx.storage.getUrl(day.coverImageId) : null,
-          schedule: schedule
-            ? {
-                _id: schedule._id,
-                lessonAt: schedule.lessonAt,
-                turnInClosesAt: schedule.turnInClosesAt,
-              }
-            : null,
+          schedule: schedule ? { _id: schedule._id, lessonAt: schedule.lessonAt } : null,
           assignments: assignments.map((a) => ({
             _id: a._id,
             title: a.title,
@@ -108,8 +96,6 @@ export const overview = query({
       year,
       currentYear: settings.currentYear,
       timeZone: settings.timeZone,
-      turnInDays: settings.turnInDays,
-      closeTime: settings.closeTime,
       curricula: curricula.map((c) => ({ _id: c._id, name: c.name })),
       curriculum: curriculum ? { _id: curriculum._id, name: curriculum.name } : null,
       days,
@@ -118,8 +104,8 @@ export const overview = query({
 });
 
 /**
- * Sets a day's lesson date for one year. The turn-in close is derived from
- * settings, so moving a lesson moves its turn-in window (decision D06).
+ * Sets a day's lesson date for one year. Turn-in never closes, so this moves
+ * only the lesson date (decision D06).
  */
 export const setSchedule = mutation({
   args: {
@@ -130,7 +116,7 @@ export const setSchedule = mutation({
     /** Local start time, "HH:MM". */
     time: v.string(),
   },
-  returns: v.object({ lessonAt: v.number(), turnInClosesAt: v.number() }),
+  returns: v.object({ lessonAt: v.number() }),
   handler: async (ctx, args) => {
     const { userId } = await requireAdmin(ctx);
     const settings = await getSettings(ctx);
@@ -154,32 +140,24 @@ export const setSchedule = mutation({
       },
       settings.timeZone,
     );
-    const turnInClosesAt = turnInCloseFor(lessonAt, settings);
     const existing = await ctx.db
       .query("lessonSchedules")
       .withIndex("by_dayId_and_year", (q) => q.eq("dayId", day._id).eq("year", args.year))
       .unique();
     if (existing) {
-      await ctx.db.patch("lessonSchedules", existing._id, { lessonAt, turnInClosesAt });
+      await ctx.db.patch("lessonSchedules", existing._id, { lessonAt });
     } else {
-      await ctx.db.insert("lessonSchedules", {
-        dayId: day._id,
-        year: args.year,
-        lessonAt,
-        turnInClosesAt,
-      });
+      await ctx.db.insert("lessonSchedules", { dayId: day._id, year: args.year, lessonAt });
     }
     await recordAdminChange(ctx, {
       actorId: userId,
       table: "lessonSchedules",
       recordId: day._id,
       summary: `Scheduled Day ${day.order}: ${day.topic} for ${args.year}`,
-      before: existing
-        ? { lessonAt: existing.lessonAt, turnInClosesAt: existing.turnInClosesAt }
-        : undefined,
-      after: { lessonAt, turnInClosesAt },
+      before: existing ? { lessonAt: existing.lessonAt } : undefined,
+      after: { lessonAt },
     });
-    return { lessonAt, turnInClosesAt };
+    return { lessonAt };
   },
 });
 

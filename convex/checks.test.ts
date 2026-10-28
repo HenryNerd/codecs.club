@@ -10,8 +10,8 @@ function as(t: ReturnType<typeof setupConvex>, userId: Id<"users">) {
 async function setup() {
   const t = setupConvex();
   await t.action(internal.admins.createAdmin, {
-    username: "rivera",
-    displayName: "Ms. Rivera",
+    username: "max",
+    displayName: "Max",
     password: "correct-horse-battery",
   });
   await t.mutation(internal.seed.run, {});

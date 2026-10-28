@@ -8,7 +8,7 @@ export type StatusKind =
   | "error"
   | "idle"
   | "online"
-  | "teacher";
+  | "admin";
 
 const symbols: Record<StatusKind, string> = {
   done: "✓",
@@ -17,7 +17,7 @@ const symbols: Record<StatusKind, string> = {
   error: "✕",
   idle: "○",
   online: "●",
-  teacher: "●",
+  admin: "●",
 };
 
 const colors: Record<StatusKind, string> = {
@@ -27,7 +27,7 @@ const colors: Record<StatusKind, string> = {
   error: "text-cor-i",
   idle: "text-ink3",
   online: "text-mint-i",
-  teacher: "text-vio-i",
+  admin: "text-vio-i",
 };
 
 /**

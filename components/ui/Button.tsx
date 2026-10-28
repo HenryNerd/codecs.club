@@ -7,7 +7,7 @@ export type ButtonVariant =
   | "secondary"
   | "ghost"
   | "dark"
-  | "teacher"
+  | "admin"
   | "danger";
 export type ButtonSize = "sm" | "md" | "lg" | "xl";
 
@@ -16,7 +16,7 @@ const variants: Record<ButtonVariant, string> = {
   secondary: "bg-sf2 text-ink hover:bg-ln",
   ghost: "bg-transparent text-ink2 hover:bg-sf2 hover:text-ink",
   dark: "bg-ink text-bg hover:bg-ink2",
-  teacher: "bg-vio text-on-vio hover:bg-vio-i",
+  admin: "bg-vio text-on-vio hover:bg-vio-i",
   danger: "bg-cor-s text-cor-i hover:bg-cor-i hover:text-bg",
 };
 

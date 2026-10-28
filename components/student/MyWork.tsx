@@ -89,7 +89,7 @@ function statusPill(status: WorkStatus) {
     case "notTurnedIn":
       return (
         <Pill tone="amber" className="h-[26px] px-2.5 text-[13px]">
-          ! Not turned in{status.closesTonight ? " · closes tonight" : ""}
+          ! Not turned in
         </Pill>
       );
     case "turnedIn":
@@ -139,7 +139,7 @@ function WorkRow({
           cn("w-full", selected && !resume && "bg-bg"),
         )}
       >
-        {resume ? "Resume" : item.status.kind === "reviewed" && item.status.closed ? "View" : "Open"}
+        {resume ? "Resume" : "Open"}
       </span>
     </button>
   );
@@ -189,12 +189,9 @@ function WorkDetail({ item }: { item: WorkItem }) {
               </li>
             ))}
           </ol>
-          {detail.turnInClosedAt && (
-            <p className="m-0 text-[13px] text-ink2">
-              Turn-in closed {formatWeekdayDate(detail.turnInClosedAt, TZ)}. You can still open and
-              edit your work.
-            </p>
-          )}
+          <p className="m-0 text-[13px] text-ink2">
+            You can open, edit and turn this in again anytime.
+          </p>
           <div className="flex gap-2.5">
             <span className={buttonClasses("primary", "lg", "h-[42px]")}>Open work</span>
             <span className={buttonClasses("secondary", "lg", "h-[42px] bg-bg")}>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
 import { formatNumericDate, isSameDay } from "@/lib/format";
 
@@ -10,12 +11,12 @@ export type TimelineDay = {
   _id: string;
   order: number;
   topic: string;
-  schedule: { lessonAt: number; turnInClosesAt: number } | null;
+  schedule: { lessonAt: number } | null;
 };
 
 /**
- * One year's lessons on a week grid, each with a bar from the lesson to its
- * turn-in close. Scrolls horizontally when the year runs long.
+ * One year's lessons on a week grid. Scrolls horizontally when the year runs
+ * long (and on phones), starting at the selected lesson.
  */
 export function YearTimeline({
   days,
@@ -30,20 +31,30 @@ export function YearTimeline({
   selectedId: string | null;
   onSelect: (dayId: string) => void;
 }) {
+  const scroller = useRef<HTMLDivElement>(null);
   const scheduled = days.filter(
     (d): d is TimelineDay & { schedule: NonNullable<TimelineDay["schedule"]> } => d.schedule !== null,
   );
+  const origin = Math.min(...scheduled.map((d) => d.schedule.lessonAt)) - 3 * DAY_MS;
+  const end = Math.max(now, ...scheduled.map((d) => d.schedule.lessonAt)) + 7 * DAY_MS;
+  const x = (ts: number) => Math.round(((ts - origin) / DAY_MS) * PX_PER_DAY);
+  const focusAt = scheduled.find((d) => d._id === selectedId)?.schedule.lessonAt ?? now;
+  const focusLeft = scheduled.length > 0 ? x(focusAt) : 0;
+
+  // When the year is wider than the screen, start with the selected lesson in view.
+  useEffect(() => {
+    const el = scroller.current;
+    if (el && el.scrollWidth > el.clientWidth) el.scrollLeft = Math.max(0, focusLeft - el.clientWidth / 2);
+  }, [focusLeft]);
+
   if (scheduled.length === 0) {
     return (
-      <div className="grid h-[168px] place-items-center text-sm text-ink3">
+      <div className="grid h-[104px] place-items-center px-5 text-center text-sm text-ink3">
         No lessons scheduled for this year yet. Use “Set date” to add the first one.
       </div>
     );
   }
 
-  const origin = Math.min(...scheduled.map((d) => d.schedule.lessonAt)) - 3 * DAY_MS;
-  const end = Math.max(now, ...scheduled.map((d) => d.schedule.turnInClosesAt)) + 7 * DAY_MS;
-  const x = (ts: number) => Math.round(((ts - origin) / DAY_MS) * PX_PER_DAY);
   const width = x(end);
 
   const months: Array<{ label: string; left: number }> = [];
@@ -69,11 +80,11 @@ export function YearTimeline({
   const todayLeft = x(now);
 
   return (
-    <div className="overflow-x-auto">
-      <div className="relative mx-5 my-3.5 h-[168px]" style={{ width }}>
+    <div ref={scroller} className="overflow-x-auto">
+      <div className="relative mx-5 my-3.5 h-[96px]" style={{ width }}>
         <span
           aria-hidden="true"
-          className="absolute inset-x-0 top-[22px] bottom-[22px]"
+          className="absolute inset-x-0 top-[22px] bottom-0"
           style={{
             backgroundImage: "linear-gradient(90deg, var(--ln) 1px, transparent 1px)",
             backgroundSize: `${7 * PX_PER_DAY}px 100%`,
@@ -88,7 +99,7 @@ export function YearTimeline({
           <>
             <span
               aria-hidden="true"
-              className="absolute top-[18px] bottom-[22px] w-0.5 bg-ink"
+              className="absolute top-[18px] bottom-0 w-0.5 bg-ink"
               style={{ left: todayLeft }}
             />
             <span
@@ -99,57 +110,32 @@ export function YearTimeline({
             </span>
           </>
         )}
-        {scheduled.map((day, i) => {
-          const { lessonAt, turnInClosesAt } = day.schedule;
+        {scheduled.map((day) => {
+          const { lessonAt } = day.schedule;
           const left = x(lessonAt);
           const isToday = isSameDay(lessonAt, now, timeZone);
           const selected = day._id === selectedId;
-          const closed = turnInClosesAt <= now;
-          const closesTonight = !closed && isSameDay(turnInClosesAt, now, timeZone);
-          const future = lessonAt > now && !isToday;
-          const barLabel = closed
-            ? "closed"
-            : closesTonight
-              ? "closes tonight"
-              : future
-                ? `to ${formatNumericDate(turnInClosesAt, timeZone)}`
-                : `open to ${formatNumericDate(turnInClosesAt, timeZone)}`;
           return (
-            <div key={day._id}>
-              <button
-                type="button"
-                onClick={() => onSelect(day._id)}
-                aria-pressed={selected}
-                aria-label={`Day ${day.order}: ${day.topic}, ${formatNumericDate(lessonAt, timeZone)}`}
-                className={cn(
-                  "absolute top-[26px] h-[62px] w-[104px] cursor-pointer overflow-hidden rounded-xl border-0 px-[9px] py-[7px] text-left text-[13px] leading-[1.2]",
-                  isToday
-                    ? "bg-mint font-bold text-on-mint"
-                    : "bg-bg text-ink shadow-[0_1px_2px_rgba(14,23,20,.1)]",
-                  selected && "outline-2 outline-offset-2 outline-ink",
-                )}
-                style={{ left }}
-              >
-                <b className={cn("block text-xs leading-[1.3] font-bold whitespace-nowrap", !isToday && "text-ink3")}>
-                  D{day.order} · {formatNumericDate(lessonAt, timeZone)}
-                </b>
-                {day.topic}
-              </button>
-              <span
-                className={cn(
-                  "absolute h-5 overflow-hidden rounded-md px-2 text-[11.5px] leading-5 whitespace-nowrap",
-                  i % 2 === 0 ? "top-24" : "top-[120px]",
-                  closed && "bg-sf2 text-ink3",
-                  closesTonight && "bg-amb font-bold text-on-amb",
-                  !closed && !closesTonight && isToday && "bg-mint font-bold text-on-mint",
-                  !closed && !closesTonight && !isToday && !future && "bg-mint-s2 font-semibold text-mint-i",
-                  future && "border-[1.5px] border-dashed border-bd leading-[17px] text-ink3",
-                )}
-                style={{ left, width: Math.max(40, x(turnInClosesAt) - left) }}
-              >
-                D{day.order} turn-in · {barLabel}
-              </span>
-            </div>
+            <button
+              key={day._id}
+              type="button"
+              onClick={() => onSelect(day._id)}
+              aria-pressed={selected}
+              aria-label={`Day ${day.order}: ${day.topic}, ${formatNumericDate(lessonAt, timeZone)}`}
+              className={cn(
+                "absolute top-[26px] h-[62px] w-[104px] cursor-pointer overflow-hidden rounded-xl border-0 px-[9px] py-[7px] text-left text-[13px] leading-[1.2]",
+                isToday
+                  ? "bg-mint font-bold text-on-mint"
+                  : "bg-bg text-ink shadow-[0_1px_2px_rgba(14,23,20,.1)]",
+                selected && "outline-2 outline-offset-2 outline-ink",
+              )}
+              style={{ left }}
+            >
+              <b className={cn("block text-xs leading-[1.3] font-bold whitespace-nowrap", !isToday && "text-ink3")}>
+                D{day.order} · {formatNumericDate(lessonAt, timeZone)}
+              </b>
+              {day.topic}
+            </button>
           );
         })}
       </div>

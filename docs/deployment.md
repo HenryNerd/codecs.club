@@ -42,16 +42,30 @@ Log in with a Convex account that belongs to team `code-cs` (`npx convex login`)
    ```bash
    node scripts/setup-auth-env.mjs
    ```
-3. Create an admin account (choose your own username and a password of at least 10 characters; it is hashed by Convex Auth):
+3. Create an admin account (choose your own username and a password of at least 10 characters; it is hashed by Convex Auth). Use your name as the display name, without a title: students see its first word (“Max reviewed this”), and a name that starts with a title is refused:
    ```bash
-   npx convex run admins:createAdmin '{"username":"rivera","displayName":"Ms. Rivera","password":"…"}'
+   npx convex run admins:createAdmin '{"username":"max","displayName":"Max","password":"…"}'
    ```
 4. Load the sample school from the design (only on an empty deployment; refuses to run twice):
    ```bash
    npx convex run seed:run
    ```
 
-The seed creates Python Fundamentals (basic, 8 days), Advanced Python, last year’s Intro to Python, the 2026–27 schedule, the 24-student basic roster plus 3 advanced students, sample work for `jsmith`, a Countdown review queue and two open help requests.
+The seed creates Python Fundamentals (basic, 6 days for the 6-week program: Hello, Python; Variables; Input and strings; Conditionals; Loops; Lists and functions), Advanced Python, last year’s Intro to Python, the 2026–27 schedule, the 24-student basic roster plus 3 advanced students (no seats), sample work for `jsmith`, a Countdown review queue and two open help requests.
+
+### Updating a deployment seeded before October 28, 2026
+
+An older seed has 8 basic days, seat numbers and a 14-day turn-in window. Rather than wiping and reseeding (which also deletes the admin account and every test submission), sync the new code with `npx convex dev`, then run:
+
+```bash
+npx convex run seed:applyCorrections
+```
+
+It removes Python Fundamentals' empty Days 7–8 (Functions, Final project), renames Day 6 to “Lists and functions”, and clears the unused `seatIndex`, `turnInClosesAt`, `turnInDays` and `closeTime` fields. It never removes a day that has assignments or lesson dates and is safe to run twice. If the admin's display name has a title, rename it (this also updates the account's profile name):
+
+```bash
+npx convex run admins:setDisplayName '{"username":"rivera","displayName":"Max"}'
+```
 
 ## Daily development
 

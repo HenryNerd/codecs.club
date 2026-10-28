@@ -30,17 +30,17 @@ export function AssignmentEditor() {
 
   return (
     <main className="flex flex-col pb-10">
-      <div className="flex flex-wrap items-end gap-3.5 px-7 pt-4">
-        <div>
+      <div className="flex flex-wrap items-end gap-x-3.5 gap-y-2 px-4 pt-4 md:px-7">
+        <div className="min-w-0">
           <div className="text-sm text-ink3">{fixture.dayLabel} / Assignments</div>
-          <h1 className="m-0 mt-0.5 text-[46px] leading-[1.04] font-extrabold tracking-[-.035em]">
+          <h1 className="m-0 mt-0.5 text-[34px] leading-[1.04] font-extrabold tracking-[-.035em] break-words md:text-[46px]">
             {title || "Untitled assignment"}
           </h1>
         </div>
         <Pill tone="amber" className="mb-2 h-7 px-3 text-[13px]">
           ○ Draft · saved {formatTime(fixture.savedAt, TZ)}
         </Pill>
-        <div className="mb-0.5 ml-auto flex gap-2">
+        <div className="mb-0.5 flex flex-wrap gap-2 max-md:w-full max-md:[&>button]:h-11 max-md:[&>button]:flex-1 md:ml-auto">
           <Button variant="secondary" size="lg" className="h-[42px]" disabled title={PHASE_HINT}>
             Save draft
           </Button>
@@ -49,9 +49,9 @@ export function AssignmentEditor() {
           </Button>
         </div>
       </div>
-      <PreviewBanner phase="Phase 7" className="mx-7 mt-3" />
+      <PreviewBanner phase="Phase 7" className="mx-4 mt-3 md:mx-7" />
 
-      <div className="grid gap-[18px] px-7 pt-4 xl:grid-cols-[216px_minmax(0,1fr)_468px]">
+      <div className="grid gap-[18px] px-4 pt-4 md:px-7 xl:grid-cols-[216px_minmax(0,1fr)_468px]">
         <nav
           aria-label={`${fixture.dayShort} assignments`}
           className="flex flex-col gap-0.5 self-start rounded-[20px] bg-sf p-2"
@@ -66,7 +66,7 @@ export function AssignmentEditor() {
                 key={s.id}
                 aria-current={current ? "page" : undefined}
                 className={cn(
-                  "flex flex-col rounded-xl px-3 py-[9px]",
+                  "flex min-h-11 flex-col justify-center rounded-xl px-3 py-[9px]",
                   current && "bg-pill shadow-[0_1px_2px_rgba(14,23,20,.12)]",
                 )}
               >
@@ -83,7 +83,7 @@ export function AssignmentEditor() {
               </div>
             );
           })}
-          <Button variant="ghost" size="md" className="mt-0.5 justify-start" disabled title={PHASE_HINT}>
+          <Button variant="ghost" size="md" className="mt-0.5 justify-start max-md:h-11" disabled title={PHASE_HINT}>
             + New assignment
           </Button>
         </nav>
@@ -93,7 +93,7 @@ export function AssignmentEditor() {
             <span className="text-sm font-bold">Type</span>
             <SegmentedControl
               label="Type"
-              className="self-start bg-sf [&>button]:h-[34px]"
+              className="self-start bg-sf [&>button]:h-[34px] max-md:[&>button]:h-11"
               options={[
                 { value: "guided", label: "Guided" },
                 { value: "open", label: "Open-ended" },
@@ -143,7 +143,7 @@ export function AssignmentEditor() {
             <div className="flex flex-col gap-1.5">
               <span className="text-sm font-bold">Starter files</span>
               <div className="scheme-dark overflow-hidden rounded-[14px] bg-code-bg text-code-ink">
-                <div className="flex h-[38px] items-center gap-1.5 bg-code-bar px-2">
+                <div className="flex min-h-[38px] flex-wrap items-center gap-1.5 bg-code-bar px-2 py-1">
                   {fixture.draft.starterFiles.map((f) => (
                     <span
                       key={f.name}
@@ -152,10 +152,10 @@ export function AssignmentEditor() {
                       {f.name}
                     </span>
                   ))}
-                  <Button variant="ghost" size="sm" className="h-7 text-[12.5px]" disabled title={PHASE_HINT}>
+                  <Button variant="ghost" size="sm" className="h-7 text-[12.5px] max-md:h-10" disabled title={PHASE_HINT}>
                     + Add file
                   </Button>
-                  <span className="ml-auto text-xs text-ink3">Copied into each student’s workspace</span>
+                  <span className="ml-auto text-xs text-ink3 max-md:hidden">Copied into each student’s workspace</span>
                 </div>
                 <CodeView
                   code={fixture.draft.starterFiles[0]!.content}
@@ -172,7 +172,7 @@ export function AssignmentEditor() {
             aria-label="Evaluation"
             className="flex flex-col gap-2.5 self-start rounded-[24px] bg-sf p-[18px]"
           >
-            <div className="flex items-baseline justify-between">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-2">
               <h2 className="m-0 text-[22px] leading-[1.2] font-bold tracking-[-.02em]">Evaluation</h2>
               <span className="text-[12.5px] text-ink3">Checks output only. Whitespace ignored.</span>
             </div>
@@ -195,7 +195,7 @@ export function AssignmentEditor() {
             ))}
             <Button
               variant="secondary"
-              className="self-start bg-bg"
+              className="self-start bg-bg max-md:h-11"
               onClick={() =>
                 setParts((p) => [...p, { name: `Part ${p.length + 1}`, kind: "containsInOrder", expected: "" }])
               }
@@ -211,7 +211,7 @@ export function AssignmentEditor() {
                     type="button"
                     aria-label="Fewer parts"
                     onClick={() => setPartialMin((n) => Math.max(0, n - 1))}
-                    className="grid size-[26px] cursor-pointer place-items-center rounded-[7px] border-0 bg-transparent font-bold"
+                    className="grid size-[26px] cursor-pointer place-items-center rounded-[7px] border-0 bg-transparent font-bold max-md:size-10"
                   >
                     −
                   </button>
@@ -225,7 +225,7 @@ export function AssignmentEditor() {
                     type="button"
                     aria-label="More parts"
                     onClick={() => setPartialMin((n) => Math.min(parts.length, n + 1))}
-                    className="grid size-[26px] cursor-pointer place-items-center rounded-[7px] border-0 bg-transparent font-bold"
+                    className="grid size-[26px] cursor-pointer place-items-center rounded-[7px] border-0 bg-transparent font-bold max-md:size-10"
                   >
                     +
                   </button>

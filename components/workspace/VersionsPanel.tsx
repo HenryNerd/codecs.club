@@ -30,8 +30,8 @@ function reasonLabel(version: Pick<VersionSummary, "reason" | "restoredFrom">): 
       return version.restoredFrom !== null ? `Restored v${version.restoredFrom}` : "Restored";
     case "submit":
       return "Turned in";
-    case "teacher":
-      return "Teacher edit";
+    case "teacher": // legacy stored literal for an admin's edit; the version shows their name
+      return "Edited together";
     case "check":
       return "Checked";
     case "autosave":

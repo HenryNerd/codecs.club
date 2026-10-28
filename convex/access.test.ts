@@ -11,8 +11,8 @@ function as(t: ReturnType<typeof setupConvex>, userId: Id<"users">) {
 async function setup() {
   const t = setupConvex();
   const adminUserId = await t.action(internal.admins.createAdmin, {
-    username: "rivera",
-    displayName: "Ms. Rivera",
+    username: "max",
+    displayName: "Max",
     password: "correct-horse-battery",
   });
   await t.mutation(internal.seed.run, {});
@@ -58,9 +58,10 @@ describe("access control", () => {
     const { t, jordan } = await setup();
     const home = await as(t, jordan.userId).query(api.student.home, {});
     expect(home.student.loginCode).toBe("jsmith");
-    expect(home.days).toHaveLength(8);
+    expect(home.days).toHaveLength(6);
     const loops = home.days.find((d) => d.topic === "Loops")!;
     expect(loops.assignments.map((a) => a.title)).toEqual(["Countdown", "Forever greeter", "Loop art"]);
+    expect(home.latestFeedback).toMatchObject({ authorName: "Max" });
     expect(home.latestFeedback?.body).toMatch(/favorite color/);
   });
 

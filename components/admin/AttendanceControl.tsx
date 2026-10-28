@@ -44,7 +44,7 @@ export function AttendanceControl({
             disabled={disabled}
             onClick={() => onChange(option.value)}
             className={cn(
-              "flex h-[26px] cursor-pointer items-center rounded-full border-0 px-[11px] text-[13px]",
+              "flex h-[26px] cursor-pointer items-center rounded-full border-0 px-[11px] text-[13px] max-md:h-10 max-md:px-3.5 max-md:text-sm",
               checked ? cn("font-bold", option.selected) : "bg-transparent font-semibold text-ink2 hover:text-ink",
               "disabled:cursor-not-allowed",
             )}

@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-[Documentation index](README.md). Updated **October 15, 2026**. This orders the agreed features into phases. It adds no new scope; feature rules stay in the other guides.
+[Documentation index](README.md). Updated **October 28, 2026**. This orders the agreed features into phases. It adds no new scope; feature rules stay in the other guides.
 
 The visual reference is the Claude Design project **CodeCS Basic v2**, saved at [`design/CodeCS Basic v2.dc.html`](../design/CodeCS%20Basic%20v2.dc.html) (10 screens at 1366×768, light and dark). `support.js` and `image-slot.js` from that project are design-tool runtime only and are not part of the app.
 
@@ -15,14 +15,14 @@ The visual reference is the Claude Design project **CodeCS Basic v2**, saved at 
 | Sign-in | Convex Auth: student login code (`ConvexCredentials`, rate-limited) and admin username/password (`Password`, sign-up refused; accounts created with `admins:createAdmin`) |
 | Live screens | Learning home, Lesson day, Admin Students (roster, attendance, group/curriculum/login-code changes), Admin Curriculum (timeline, day content, lesson dates), Settings (read-only), History |
 | Preview screens | My work, Assignments editor, Assistance, Review render sample data from `lib/fixtures.ts` behind a visible “Preview” banner; nothing on them is saved (the Workspace went live in Phase 3, Review in Phase 6) |
-| Tests | `npm test`: login codes, sign-in round trips, student/admin access refusals, reassignment history, turn-in close time zones, partial rule |
+| Tests | `npm test`: login codes, sign-in round trips, student/admin access refusals, reassignment history, lesson time zones, partial rule |
 
 ## Phase 3 — Editor and persistence (built)
 
 | Area | What exists |
 | --- | --- |
 | Editor | CodeMirror 6 (`components/workspace/CodeEditor.tsx`) with Python highlighting, 4-space indent, bracket matching/closing, search and undo per file; theme from the design's `--k/--f/--s/--n/--c/--o` and `--code-*` tokens (`editorTheme.ts`), dark by default via `.scheme-dark` |
-| Workspace screen | `/learn/assignments/[assignmentId]` is live: task and expected output, file tabs, Files and Versions panels, turn-in close date and attempt count. Run, Stop, Packages, Check, Turn in and Ask for help render disabled (“Not available yet”) for Phases 4–6 and 9 |
+| Workspace screen | `/learn/assignments/[assignmentId]` is live: task and expected output, file tabs, Files and Versions panels, turn-in state and attempt count. Run, Stop, Packages, Check, Turn in and Ask for help render disabled (“Not available yet”) for Phases 4–6 and 9 |
 | Files | Add (`+`, name checked as you type it), switch, upload (`.py/.txt/.csv/.json`, confirm before replacing) and download the shown file. Limits: 20 files, 100 KB per file, 400 KB per workspace (`convex/lib/workFiles.ts`, enforced on both sides) |
 | Backend | `convex/workspaces.ts`: `get` (task + working copy), `open` (creates the workspace from the published starter files as v1), `saveFiles` (autosave; per-file revisions), `versions` (paginated), `version`, `restore`. Students only, caller derived from the session, someone else's workspace reads as not found, drafts and other curricula never open (a student's own past work still does) |
 | Autosave | `lib/workspaceSync.ts`: 0.8 s debounce, at most 4 s during continuous typing, one save in flight. Header shows Saving… / ✓ Saved / Offline · changes kept / Save failed · Retry; “Saved” only after the mutation resolves. Failed saves keep the edits and retry with backoff (2 s doubling to 30 s) and on reconnect; invalid saves wait for the next edit. Saves on tab hide and when leaving; full page unloads with unsaved work trigger the browser warning; in-app links wait for a running save or ask when offline/failed |
@@ -61,15 +61,29 @@ The visual reference is the Claude Design project **CodeCS Basic v2**, saved at 
 | Area | What exists |
 | --- | --- |
 | Turn in | The workspace card saves first (a failed save never reports success), then `submissions.turnIn` pins the saved working copy: it reuses the latest version when the files are unchanged, otherwise adds a version with reason `submit`, and records the next attempt. Guided turn-ins carry the latest check of exactly those files (`checkResultId`); otherwise review says “Not checked” |
-| Retries | The card sends an idempotency key per Turn in click and keeps it until Convex answers, so a retry after a dropped connection returns the attempt already made (even if turn-in closed in between). A key from someone else's work is refused without revealing anything |
-| Cutoff | Enforced in the mutation: refused after the day's `lessonSchedules.turnInClosesAt` for the workspace's year; unscheduled days have no close. After the close the card says so and editing, Versions and feedback stay available |
+| Retries | The card sends an idempotency key per Turn in click and keeps it until Convex answers, so a retry after a dropped connection returns the attempt already made. A key from someone else's work is refused without revealing anything |
+| No cutoff | Built with a server-side cutoff (14 days after the lesson, 11:59 pm Pacific); removed on October 28, 2026 (D13): turn-in never closes |
 | Resubmitting (D09) | Turning in again before review adds an attempt and marks the earlier unreviewed one `superseded`: it stays visible to admins but leaves the queue and the Review badge. Only the latest attempt can be reviewed |
-| Turn-in card | Not turned in / Turned in, close date, attempt number, version and time, waiting for review or “Reviewed by … · date”, and the latest student-visible feedback with the attempt it was written on. Copy: “Sends your last saved version (vN). You can keep editing after.” (`submissions.forWorkspace`) |
+| Turn-in card | Not turned in / Turned in, attempt number, version and time, waiting for review or “Reviewed by … · date” (the admin's first name), and the latest student-visible feedback with the attempt it was written on. Copy: “Sends your last saved version (vN). You can keep editing after.” (`submissions.forWorkspace`) |
 | Review screen | `/admin/review` is live for the selected group's newest curriculum: Day and Assignment pickers with waiting counts; a queue with one row per student (New attempt = an earlier attempt was reviewed, Unreviewed, Reviewed, Not turned in) with time and outcome; attempt tabs; the read-only submitted snapshot (file tabs when there are several); Expected vs Actual words compared (missing words mint, differing words coral); the check parts; “Not checked” when there is no result; “Open live working copy” links to Assistance for now |
-| Writing | Optional student-visible feedback and a private admin-only note (`feedback.visibility` `student` / `private`, D07). Mark reviewed saves both and sets `status`, `reviewedBy`, `reviewedAt`; on a reviewed attempt the button becomes Save changes (empty text removes a note; the review time is kept). Each review is recorded in History without the writing itself. Next → moves to the next waiting student. “Turn-in closes … Reviewing doesn’t extend it.” |
+| Writing | Optional student-visible feedback and a private admin-only note (`feedback.visibility` `student` / `private`, D07). Mark reviewed saves both and sets `status`, `reviewedBy`, `reviewedAt`; on a reviewed attempt the button becomes Save changes (empty text removes a note; the review time is kept). Each review is recorded in History without the writing itself. Next → moves to the next waiting student |
 | Where feedback shows | Learning home's latest feedback card (`student.home`, student-visible only) and the workspace turn-in card. Private notes are only returned by admin queries |
 | Schema | Additive only: `submissions.status` gains `"superseded"`. `workspaces.get` no longer returns `turnIn` (the card reads `submissions.forWorkspace`) |
-| Tests | `convex-test`: idempotent retry, cutoff refusal with editing and earlier retries still working, unscheduled days open, snapshot unchanged after later edits and a restore, guided turn-ins carry the matching check, resubmission supersedes (badge and queue count once), queue states, feedback visible to the student while the private note never is (card, home, history), admin-only review (student and anonymous refused), another student's work refused; word comparison for Expected vs Actual (a “…” in the expected output is never marked) |
+| Tests | `convex-test`: idempotent retry, turn-in accepted months after the lesson and on unscheduled days, snapshot unchanged after later edits and a restore, guided turn-ins carry the matching check, resubmission supersedes (badge and queue count once), queue states, feedback visible to the student while the private note never is (card, home, history), admin-only review (student and anonymous refused), another student's work refused; word comparison for Expected vs Actual (a “…” in the expected output is never marked) |
+
+## Club corrections — October 28, 2026 (built)
+
+Product corrections from the club (decisions D13–D17), applied across code, seed, tests and docs.
+
+| Area | What changed |
+| --- | --- |
+| Turn-in never locks (D13) | The server-side cutoff is gone from `submissions.turnIn`; no due date, “closes”/“closed”/“closing tonight” text or late label anywhere (workspace card, lesson day, learning home, day track, My work). Curriculum's timeline shows lessons only (no turn-in bars); Review has no cutoff reminder; Settings shows the school year and time zone only. Lesson dates stay, and changing one moves only the lesson date (D06) |
+| No assigned seating (D14) | Assistance replaces the seating chart with the class listed by last name; the help queue (longest wait first), online/idle/offline counts and the selected-student panel stay. The seed and fixtures have no seats |
+| No staff role word, no titles (D15) | Student-facing names are the admin's first name (`convex/lib/adminNames.ts`: “Max reviewed this”, “Note from Max”, version authors). `admins:createAdmin` refuses a display name that starts with a title; `admins:setDisplayName` renames an admin. UI copy, docs, comments and component variants (now `Button`/`StatusLabel` `admin` and `CodeView` cursor tone `admin`) no longer use the old role word; the stored `workVersions.reason` literal `"teacher"` stays and reads “Edited together” |
+| 6-week program (D16) | Python Fundamentals has 6 days; Functions folded into Day 6 “Lists and functions” (Day 5 Loops / Countdown and Jordan's history unchanged) |
+| Admin on phones (D17) | Every `/admin/*` screen works at 375 px with no sideways page scroll and ~44 px touch targets; a compact top bar with a Menu below 1280 px; tables stack into cards; the student drawer, Assistance's selected student and Review's attempt open as full-screen sheets (`components/ui/PhoneSheet.tsx`); Curriculum has a phone Day picker and lists assignments first. The 1366×768 layout is unchanged. Breakpoints: [UI design](ui-design.md#responsive-breakpoints). The login page also works on a phone |
+| Schema | Removed fields kept optional and marked deprecated so stored documents validate: `lessonSchedules.turnInClosesAt`, `settings.turnInDays`, `settings.closeTime`, `students.seatIndex`. `seed:applyCorrections` updates an older dev deployment in place (see [deployment](deployment.md#updating-a-deployment-seeded-before-october-28-2026)) |
+| Tests | Turn-in accepted months after the lesson and on unscheduled days; admin first names and title refusal; the seed has 6 days and no seats; `applyCorrections` trims an older 8-day seed without losing work and is idempotent |
 
 ## Later phases
 
@@ -84,5 +98,5 @@ Each phase is its own piece of work. Screens move off fixtures as their phase la
 | 6. Turn-in and review | Built (see above); checked live against the dev deployment on October 15–16, 2026 (student and admin) | — |
 | 7. Admin content | Cover image upload (file storage); assignment authoring with revisions, drafts and publishing | D04, D08 |
 | 8. Admin students | Roster import with preview; printable login tickets; history for every write | D03 |
-| 9. Assistance | Presence (online/idle/offline); help requests and queue; seat assignment; join/leave notifications; collaborative editing with labeled cursors; guidance notes; attributed remote Run | V04, V05 |
+| 9. Assistance | Presence (online/idle/offline); help requests and queue; join/leave notifications (by the admin's first name); collaborative editing with labeled cursors; guidance notes; attributed remote Run | V04, V05 |
 | 10. Hardening and release | Settings editing; authorization audit; accessibility pass; Chromebook and school-network tests; 50-active-student load check; hosting and domain | D02, D12, V02, V09, V10, V12 |

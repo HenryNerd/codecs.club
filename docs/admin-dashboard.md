@@ -22,11 +22,11 @@ The dashboard is the entry point for every approved non-student feature. It expo
 | --- | --- |
 | Students | Spreadsheet roster intake; view/edit student records; change login code; change basic/advanced group and curriculum; print login tickets; record attendance |
 | Lessons and Slides | Upload lessons and slides; organize curriculum days/topics; replace/edit lesson material; make slides available to students |
-| Schedule | Edit yearly lesson dates and times; show their relationship to turn-in windows |
+| Schedule | Edit yearly lesson dates and times (turn-in never closes, so a date doesn't limit turn-in) |
 | Assignments | Create/edit guided and open-ended assignments; manage drafts and publication; change instructions, files, expected output, and evaluation configuration |
 | Review and Notes | Open submitted snapshots and saved student work; review expected versus actual output and completion results; add notes and student feedback; inspect every submission, return, and resubmission |
-| Assistance and Help | See help alerts and active students; join work directly with notification; view/edit/run code; use labeled cursors; send guidance |
-| Settings | Edit approved behavior settings, including turn-in duration and closing times |
+| Assistance and Help | See help alerts and active students (a class list, not a seating chart: there is no assigned seating); join work directly with notification; view/edit/run code; use labeled cursors; send guidance |
+| Settings | Edit approved behavior settings: current school year and time zone. There are no turn-in window settings (D13) |
 | Change History | Inspect recorded admin changes to student records, logins, curricula, lessons, assignments, schedules, and settings |
 
 Configurable functionality means exposing controls for approved product behavior. New features still require discussion before they appear in the specification or dashboard.
@@ -35,12 +35,13 @@ Configurable functionality means exposing controls for approved product behavior
 
 - Student curriculum changes retain identity, old work, submitted versions, and history.
 - Changing a student login is an explicit admin action. Validate uniqueness across all students and retain the student's internal identity and work; display the updated code for ticket reprinting.
-- Schedule and cutoff controls show the target year, lesson, effective date/time, and time zone. Unscheduled lessons must not acquire invented dates.
+- Schedule controls show the target year, lesson, effective date/time, and time zone. Unscheduled lessons must not acquire invented dates.
 - Content, expected-output, and configuration edits cannot silently overwrite student files, prior submissions, or historical check results.
 - Notes associated with student review must be clearly distinguished from execution output and automated check results. Written feedback is optional and student-visible; a separate private note is visible to admins only (D07).
 - Use contextual forms with validation and save feedback for editable data rather than exposing arbitrary database fields.
 - Separate live assistance from review of a submitted snapshot, while preserving a clear path between them.
-- Use a persistent dashboard navigation with the selected group/curriculum/year visible where relevant.
+- Use a persistent dashboard navigation with the selected group/curriculum/year visible where relevant. Below 1280 px it collapses into a compact top bar with a Menu (D17).
+- Every admin screen works on a phone at 375 px wide with no sideways page scrolling and touch targets of about 44 px; finding an assignment (Assignments, Curriculum's day and assignment list, the Review queue) comes first. See [responsive breakpoints](ui-design.md#responsive-breakpoints).
 - Expose every approved teaching feature within the dashboard; keep these controls out of the student interface.
 - Record admin changes with the acting admin, time, affected record, and relevant previous/new values. Never record readable passwords or credentials in change history.
 
@@ -81,7 +82,7 @@ UI requirements:
 - Separate curriculum content from the year-specific schedule.
 - Changing a new year's dates must not overwrite previous years' lesson dates or student history.
 - Show unscheduled days explicitly.
-- Explain the effect of date changes on associated turn-in windows.
+- Explain that changing a date moves only the lesson date; turn-in never closes (D06, D13).
 - Keep group, curriculum, topic, and schedule year visible where relevant.
 
 ### Assignment authoring
@@ -109,7 +110,7 @@ UI requirements:
 - See the requirement-level results and why the submitted work qualifies as complete, partial, or not complete.
 - Provide feedback without requiring numerical grades.
 - Return reviewed work to the student for editing and resubmission, preserving earlier snapshots and feedback.
-- Show all submission attempts and teacher returns on the admin dashboard, including the saved version, timestamp, check result, and associated feedback for each attempt.
+- Show all submission attempts and returns on the admin dashboard, including the saved version, timestamp, check result, and associated feedback for each attempt.
 
 UI requirements:
 

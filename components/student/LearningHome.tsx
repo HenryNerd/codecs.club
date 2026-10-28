@@ -5,8 +5,8 @@ import Link from "next/link";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState, LoadingState } from "@/components/ui/States";
 import { api } from "@/convex/_generated/api";
-import { formatTime, formatWeekdayDate, formatYear, isSameDay } from "@/lib/format";
-import { dayState, focusDay } from "@/lib/progress";
+import { formatWeekdayDate, formatYear, isSameDay } from "@/lib/format";
+import { focusDay } from "@/lib/progress";
 import { useNow } from "@/lib/useNow";
 import { AssignmentRow } from "./AssignmentRow";
 import { DaysCompleteBar, DayTrack } from "./DayTrack";
@@ -20,13 +20,6 @@ export function LearningHome() {
   const focus = focusDay(days, now, timeZone);
   const focusIsToday =
     focus?.lessonAt != null && isSameDay(focus.lessonAt, now, timeZone);
-
-  // Past days whose turn-in closes later today with work still not turned in.
-  const closingTonight = days
-    .map((day) => ({ day, state: dayState(day, now, timeZone) }))
-    .filter(({ state }) => state.kind === "open" && state.closesTonight)
-    .map(({ day }) => ({ day, missing: day.assignments.filter((a) => !a.turnedIn) }))
-    .filter(({ missing }) => missing.length > 0);
 
   return (
     <main className="flex flex-col pb-10">
@@ -54,7 +47,7 @@ export function LearningHome() {
           <span className="text-sm text-ink3">{days.length} days, in learning order</span>
         </div>
         {days.length === 0 ? (
-          <EmptyState title="No days yet">Your teacher hasn’t added lessons to this curriculum.</EmptyState>
+          <EmptyState title="No days yet">No lessons have been added to this curriculum yet.</EmptyState>
         ) : (
           <DayTrack days={days} now={now} timeZone={timeZone} />
         )}
@@ -92,27 +85,6 @@ export function LearningHome() {
         )}
 
         <div className="flex flex-col gap-3">
-          {closingTonight.map(({ day, missing }) => (
-            <div key={day._id} role="status" className="rounded-[20px] bg-amb-s px-[18px] py-4">
-              <b className="flex items-center gap-2 font-bold text-amb-i">
-                <span
-                  aria-hidden="true"
-                  className="grid size-5 place-items-center rounded-full bg-amb text-xs font-extrabold text-on-amb"
-                >
-                  !
-                </span>
-                Day {day.order} closes tonight
-              </b>
-              <p className="mt-1.5 mb-2.5 text-sm">
-                {missing.map((a) => `“${a.title}”`).join(", ")}{" "}
-                {missing.length === 1 ? "isn’t" : "aren’t"} turned in yet. Turn-in closes at{" "}
-                {formatTime(day.turnInClosesAt!, timeZone)}.
-              </p>
-              <Link href={`/learn/assignments/${missing[0]!._id}`} className="font-bold text-amb-i">
-                Open {missing[0]!.title} →
-              </Link>
-            </div>
-          ))}
           {home.latestFeedback && (
             <div className="rounded-[20px] bg-vio-s px-[18px] py-4">
               <b className="flex items-center gap-2 font-bold text-vio-i">

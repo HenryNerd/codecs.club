@@ -23,7 +23,7 @@ Check behavior/output rather than equality with a model source-code solution. Ea
 - Validate that partial rules are attainable and consistent with full completion.
 - Show passed/unmet requirements and explain the overall outcome to students and admins.
 - Explicit rules determine results; no AI judge or numerical grades are required.
-- Open-ended projects do not require guided checks and receive teacher feedback.
+- Open-ended projects do not require guided checks and receive feedback from an admin.
 
 ### Output normalization
 
@@ -67,24 +67,23 @@ Bounded observation cannot prove arbitrary code runs forever. Straightforward lo
 | Execution | Ready / running / stopped / succeeded / failed |
 | Guided evaluation | Complete / partial / no completion for a particular work/check version |
 | Review lifecycle | Submitted -> reviewed and returned -> revised -> resubmitted |
-| Turn-in eligibility | Open / closed by the configured cutoff |
+| Turn-in eligibility | Always open (D13); there is no cutoff |
 
 Run success does not imply completion; completion does not imply submission. A newly submitted attempt does not inherit an earlier attempt's reviewed state. Editing checked code makes the old result historical rather than current.
 
 ## Submission and return
 
 - Autosave preserves a working copy; Turn in creates a preserved snapshot only after the relevant files save successfully.
-- Later edits, teacher changes, restores, and reassignment cannot mutate a submitted snapshot.
-- After review and return, students can edit/resubmit for complete, partial, or no-completion outcomes, until the deadline.
+- Later edits, admin changes, restores, and reassignment cannot mutate a submitted snapshot.
+- After review and return, students can edit/resubmit for complete, partial, or no-completion outcomes, at any time.
 - Each attempt preserves snapshot, time, applicable results, and feedback. Admins see every submission and return.
-- Returning work does not bypass a closed cutoff. Admins can adjust the cutoff; editing/history/feedback remain accessible after closing.
 - Save failures cannot produce successful submission messages; retries must not create duplicate attempts.
-- Turning in again before an earlier attempt is reviewed is allowed (D09): it adds an attempt, the teacher reviews the latest, and the earlier unreviewed attempt stays visible to admins (`superseded`) but leaves the review queue.
+- Turning in again before an earlier attempt is reviewed is allowed (D09): it adds an attempt, an admin reviews the latest, and the earlier unreviewed attempt stays visible to admins (`superseded`) but leaves the review queue.
 - An attempt carries the guided check of exactly its files when one exists; otherwise review shows it as not checked. Written feedback is optional and student-visible; a private note is admin-only (D07).
 
 ## Dates and published edits
 
-Turn-in closes **14 days** after the lesson date at **11:59 pm Pacific** (America/Los_Angeles); both values are Settings (D05). Unscheduled days have no close and show “Not scheduled”. Changing a lesson date moves its close (D06); the close is derived from the date and Settings (`convex/lib/time.ts`). Backend checks must enforce the cutoff, not only disable a button. Reviewing work never extends it.
+The basic program, Python Fundamentals, runs **6 weeks** with one lesson a week, so it has 6 days (D16). Lesson dates and times are in the school time zone, America/Los_Angeles (Pacific); unscheduled days show “Not scheduled”. Turn-in never closes (D13, which supersedes the old 14-day window of D05): there is no due date, “late” label or closing warning, and the backend accepts a turn-in at any time. Changing a lesson date moves only the lesson date (D06).
 
 Published instructions and checks can be edited, but previous files, snapshots, and results must not be silently overwritten. Results identify the code and evaluation definition used. Application of new content to existing work and re-evaluation remain explicit decisions.
 
@@ -95,6 +94,6 @@ Published instructions and checks can be edited, but previous files, snapshots, 
 - Loop checks finish within the observation rule without freezing the UI.
 - Submitted snapshots survive edits, restores, reassignment, and resubmission.
 - Every review/result belongs to the version actually reviewed/checked.
-- Closed turn-in blocks initial/repeated submission without deleting work access.
+- Turn-in and turn-in again are accepted long after the lesson and on unscheduled days.
 
 These are future implementation checks, not passed tests.

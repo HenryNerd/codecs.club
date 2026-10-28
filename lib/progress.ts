@@ -17,7 +17,6 @@ export type TrackDay = {
   order: number;
   topic: string;
   lessonAt: number | null;
-  turnInClosesAt: number | null;
   assignments: AssignmentProgress[];
 };
 
@@ -26,7 +25,7 @@ export type DayState =
   | { kind: "upcoming" }
   | { kind: "today" }
   | { kind: "done"; turnedIn: number; total: number }
-  | { kind: "open"; turnedIn: number; total: number; closesTonight: boolean; closed: boolean };
+  | { kind: "open"; turnedIn: number; total: number };
 
 export function dayState(day: TrackDay, now: number, timeZone: string): DayState {
   if (day.lessonAt === null) return { kind: "unscheduled" };
@@ -35,14 +34,8 @@ export function dayState(day: TrackDay, now: number, timeZone: string): DayState
   const total = day.assignments.length;
   const turnedIn = day.assignments.filter((a) => a.turnedIn).length;
   if (total > 0 && turnedIn === total) return { kind: "done", turnedIn, total };
-  const closes = day.turnInClosesAt;
-  return {
-    kind: "open",
-    turnedIn,
-    total,
-    closesTonight: closes !== null && closes > now && isSameDay(closes, now, timeZone),
-    closed: closes !== null && closes <= now,
-  };
+  // Turn-in never closes, so a past day stays open until everything is in.
+  return { kind: "open", turnedIn, total };
 }
 
 /** Today's day, else the most recent past day, else the first day. */

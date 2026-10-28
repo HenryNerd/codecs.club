@@ -4,7 +4,7 @@ import { setAuthEnv, setupConvex } from "./test.setup";
 
 beforeAll(setAuthEnv);
 
-const ADMIN = { username: "rivera", displayName: "Ms. Rivera", password: "correct-horse-battery" };
+const ADMIN = { username: "max", displayName: "Max", password: "correct-horse-battery" };
 
 async function seededBackend() {
   const t = setupConvex();
@@ -40,7 +40,7 @@ describe("admin sign-in", () => {
     const t = await seededBackend();
     const result = await t.action(api.auth.signIn, {
       provider: "password",
-      params: { flow: "signIn", email: "Rivera", password: ADMIN.password },
+      params: { flow: "signIn", email: "Max", password: ADMIN.password },
     });
     expect(result.tokens?.token).toBeTruthy();
   });
@@ -50,7 +50,7 @@ describe("admin sign-in", () => {
     await expect(
       t.action(api.auth.signIn, {
         provider: "password",
-        params: { flow: "signIn", email: "rivera", password: "not-the-password" },
+        params: { flow: "signIn", email: "max", password: "not-the-password" },
       }),
     ).rejects.toThrow();
   });

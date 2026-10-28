@@ -18,6 +18,7 @@ import type * as auth from "../auth.js";
 import type * as checks from "../checks.js";
 import type * as http from "../http.js";
 import type * as lib_access from "../lib/access.js";
+import type * as lib_adminNames from "../lib/adminNames.js";
 import type * as lib_changes from "../lib/changes.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_evaluation from "../lib/evaluation.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   checks: typeof checks;
   http: typeof http;
   "lib/access": typeof lib_access;
+  "lib/adminNames": typeof lib_adminNames;
   "lib/changes": typeof lib_changes;
   "lib/errors": typeof lib_errors;
   "lib/evaluation": typeof lib_evaluation;

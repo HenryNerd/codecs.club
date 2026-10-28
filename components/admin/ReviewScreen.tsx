@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useId, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { CodeView } from "@/components/ui/CodeView";
+import { PhoneSheet } from "@/components/ui/PhoneSheet";
 import { Pill, type PillTone } from "@/components/ui/Pill";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { EmptyState, LoadingState } from "@/components/ui/States";
@@ -14,7 +15,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/cn";
 import { errorMessage } from "@/lib/errors";
-import { formatRelative, formatShortDate, formatTime, formatWeekdayDate, isSameDay } from "@/lib/format";
+import { formatRelative, formatShortDate, formatTime, isSameDay } from "@/lib/format";
 import { diffOutputs, outputWords, type OutputWord } from "@/lib/outputDiff";
 import { useNow } from "@/lib/useNow";
 import { type Group, useGroup } from "./GroupContext";
@@ -56,7 +57,7 @@ const partKind = {
 } as const;
 
 const selectClass =
-  "h-10 max-w-[320px] rounded-[10px] border-[1.5px] border-bd bg-bg px-3 text-[15px] font-bold text-ink";
+  "h-10 max-w-[320px] rounded-[10px] border-[1.5px] border-bd bg-bg px-3 text-[15px] font-bold text-ink max-md:h-11 max-md:w-full max-md:max-w-none";
 
 const isWaiting = (row: QueueRow) => row.state === "newAttempt" || row.state === "unreviewed";
 
@@ -92,8 +93,10 @@ export function ReviewScreen() {
 
   return (
     <main className="flex flex-col pb-10">
-      <div className="flex flex-wrap items-end gap-3 px-7 pt-4">
-        <h1 className="m-0 text-[46px] leading-[1.04] font-extrabold tracking-[-.035em]">Review</h1>
+      <div className="flex flex-wrap items-end gap-x-3 gap-y-2 px-4 pt-4 md:px-7">
+        <h1 className="m-0 text-[34px] leading-[1.04] font-extrabold tracking-[-.035em] md:text-[46px]">
+          Review
+        </h1>
         {current && (
           <>
             <select
@@ -132,14 +135,14 @@ export function ReviewScreen() {
           </>
         )}
         {queue && (
-          <span className="mb-2.5 ml-auto text-sm font-semibold text-ink2">
+          <span className="mb-2.5 text-sm font-semibold text-ink2 md:ml-auto">
             {queue.waiting} waiting for review
           </span>
         )}
       </div>
 
       {current === null ? (
-        <EmptyState title="Nothing to review yet" className="mx-7 mt-6">
+        <EmptyState title="Nothing to review yet" className="mx-4 mt-6 md:mx-7">
           {options.curriculum
             ? `${options.curriculum.name} has no published assignments.`
             : "This group has no curriculum yet."}
@@ -147,11 +150,11 @@ export function ReviewScreen() {
       ) : queue === undefined ? (
         <LoadingState label="Loading submissions…" />
       ) : queue === null ? (
-        <EmptyState title="This assignment wasn’t found" className="mx-7 mt-6">
+        <EmptyState title="This assignment wasn’t found" className="mx-4 mt-6 md:mx-7">
           Pick another day or assignment.
         </EmptyState>
       ) : queue.rows.length === 0 ? (
-        <EmptyState title="No students yet" className="mx-7 mt-6">
+        <EmptyState title="No students yet" className="mx-4 mt-6 md:mx-7">
           Nobody in {options.curriculum?.name ?? "this curriculum"} has this assignment yet.
         </EmptyState>
       ) : (
@@ -166,6 +169,8 @@ function ReviewBody({ queue, timeZone, now }: { queue: Queue; timeZone: string; 
   const [selection, setSelection] = useState<{ studentId: Id<"students">; attempt: number | null }>(
     () => ({ studentId: queue.rows[0]!.studentId, attempt: null }),
   );
+  // Phones show the queue alone; picking a student opens their attempt as a sheet.
+  const [detailOpen, setDetailOpen] = useState(false);
   const rows = queue.rows;
   const row = rows.find((r) => r.studentId === selection.studentId) ?? rows[0]!;
   const detail = useQuery(api.review.attempt, {
@@ -176,8 +181,10 @@ function ReviewBody({ queue, timeZone, now }: { queue: Queue; timeZone: string; 
 
   const index = rows.indexOf(row);
   const next = [...rows.slice(index + 1), ...rows.slice(0, index)].find(isWaiting) ?? null;
-  const select = (studentId: Id<"students">, attempt: number | null = null) =>
+  const select = (studentId: Id<"students">, attempt: number | null = null) => {
     setSelection({ studentId, attempt });
+    setDetailOpen(true);
+  };
   const goNext = next ? () => select(next.studentId) : null;
 
   const rowSummary = (r: QueueRow) => {
@@ -196,7 +203,7 @@ function ReviewBody({ queue, timeZone, now }: { queue: Queue; timeZone: string; 
   };
 
   return (
-    <div className="grid gap-4 px-7 pt-3.5 xl:grid-cols-[272px_minmax(0,1fr)_372px]">
+    <div className="grid gap-4 px-4 pt-3.5 md:px-7 xl:grid-cols-[272px_minmax(0,1fr)_372px]">
       <nav aria-label="Submissions" className="flex flex-col gap-0.5 self-start rounded-[20px] bg-sf p-2">
         {rows.map((r) => {
           const current = r.studentId === row.studentId;
@@ -224,35 +231,41 @@ function ReviewBody({ queue, timeZone, now }: { queue: Queue; timeZone: string; 
         })}
       </nav>
 
-      {detail === undefined ? (
-        <div className="xl:col-span-2">
-          <LoadingState label="Loading attempt…" />
-        </div>
-      ) : detail === null ? (
-        <EmptyState title="This student wasn’t found" className="xl:col-span-2">
-          Pick someone else from the list.
-        </EmptyState>
-      ) : (
-        <>
-          <Snapshot
-            key={`${detail.student._id}:${detail.selected?._id ?? "none"}`}
-            detail={detail}
-            queue={queue}
-            timeZone={timeZone}
-            now={now}
-            onAttempt={(attempt) => select(row.studentId, attempt)}
-          />
-          <ReviewPanel
-            key={`${detail.selected?._id ?? detail.student._id}:${detail.selected?.status}:${detail.selected?.feedback}:${detail.selected?.privateNote}`}
-            detail={detail}
-            guided={queue.assignment.type === "guided"}
-            timeZone={timeZone}
-            now={now}
-            onAttempt={(attempt) => select(row.studentId, attempt)}
-            onNext={goNext}
-          />
-        </>
-      )}
+      <PhoneSheet
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        title={`${row.name} · ${queue.assignment.title}`}
+        backLabel="Queue"
+      >
+        {detail === undefined ? (
+          <div className="xl:col-span-2">
+            <LoadingState label="Loading attempt…" />
+          </div>
+        ) : detail === null ? (
+          <EmptyState title="This student wasn’t found" className="xl:col-span-2">
+            Pick someone else from the list.
+          </EmptyState>
+        ) : (
+          <>
+            <Snapshot
+              key={`${detail.student._id}:${detail.selected?._id ?? "none"}`}
+              detail={detail}
+              queue={queue}
+              timeZone={timeZone}
+              now={now}
+              onAttempt={(attempt) => select(row.studentId, attempt)}
+            />
+            <ReviewPanel
+              key={`${detail.selected?._id ?? detail.student._id}:${detail.selected?.status}:${detail.selected?.feedback}:${detail.selected?.privateNote}`}
+              detail={detail}
+              guided={queue.assignment.type === "guided"}
+              timeZone={timeZone}
+              onAttempt={(attempt) => select(row.studentId, attempt)}
+              onNext={goNext}
+            />
+          </>
+        )}
+      </PhoneSheet>
     </div>
   );
 }
@@ -277,7 +290,7 @@ function Snapshot({
   );
   const file = files.find((f) => f.name === shown) ?? files[0] ?? null;
   const liveLink = (
-    <Link href="/admin/assistance" className="ml-auto font-bold whitespace-nowrap text-mint-i no-underline">
+    <Link href="/admin/assistance" className="ml-auto font-bold whitespace-nowrap text-mint-i no-underline max-md:py-2.5">
       Open live working copy →
     </Link>
   );
@@ -307,7 +320,7 @@ function Snapshot({
         <>
           <SegmentedControl
             label="Attempts"
-            className="self-start bg-sf [&>button]:h-8"
+            className="max-w-full flex-wrap self-start bg-sf [&>button]:h-8 max-md:[&>button]:h-11"
             options={detail.attempts.map((a) => ({
               value: String(a.attempt),
               label: `Attempt ${a.attempt} · ${attemptWord[a.status]}`,
@@ -389,7 +402,7 @@ function OutputCompare({ selected }: { selected: Selected }) {
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid gap-2.5 sm:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-1.5 rounded-2xl bg-sf px-3.5 py-3">
           <b className="text-[13px] font-bold">Expected</b>
           {expected !== null ? (
@@ -437,14 +450,12 @@ function ReviewPanel({
   detail,
   guided,
   timeZone,
-  now,
   onAttempt,
   onNext,
 }: {
   detail: Detail;
   guided: boolean;
   timeZone: string;
-  now: number;
   onAttempt: (attempt: number) => void;
   onNext: (() => void) | null;
 }) {
@@ -458,11 +469,6 @@ function ReviewPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const closesAt = detail.turnInClosesAt;
-  const closeLine =
-    closesAt === null
-      ? "Not scheduled, so turn-in has no close. Reviewing doesn’t change that."
-      : `Turn-in ${closesAt > now ? "closes" : "closed"} ${formatWeekdayDate(closesAt, timeZone)}. Reviewing doesn’t extend it.`;
   const nextButton = (
     <Button
       variant="secondary"
@@ -480,7 +486,6 @@ function ReviewPanel({
       <aside aria-label="Check and review" className="flex flex-col gap-3 self-start rounded-[24px] bg-sf px-[18px] py-4">
         <span className="text-sm text-ink2">Nothing to review until {student.firstName} turns this in.</span>
         <div className="mt-2 flex justify-end">{nextButton}</div>
-        <span className="text-xs text-ink3">{closeLine}</span>
       </aside>
     );
   }
@@ -597,7 +602,7 @@ function ReviewPanel({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="self-start"
+                  className="self-start max-md:h-10"
                   onClick={() => {
                     setFeedbackOpen(false);
                     setFeedback("");
@@ -631,7 +636,7 @@ function ReviewPanel({
               <Button
                 variant="ghost"
                 size="sm"
-                className="self-start"
+                className="self-start max-md:h-10"
                 onClick={() => {
                   setNoteOpen(false);
                   setNote("");
@@ -668,7 +673,6 @@ function ReviewPanel({
         )}
         {nextButton}
       </div>
-      <span className="text-xs text-ink3">{closeLine}</span>
     </aside>
   );
 }

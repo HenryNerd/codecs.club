@@ -89,7 +89,7 @@ export function StudentDrawer({
   return (
     <aside
       aria-label={`Edit ${name}`}
-      className="flex flex-col gap-3.5 self-start rounded-[24px] bg-sf p-5"
+      className="flex flex-col gap-3.5 self-start rounded-[24px] bg-sf p-5 max-md:p-4"
     >
       <div className="flex items-center gap-3">
         <Avatar name={name} size={40} className="text-[15px]" />
@@ -112,7 +112,7 @@ export function StudentDrawer({
         <label htmlFor="student-login-code" className="text-sm font-bold">
           Login code
         </label>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <TextInput
             id="student-login-code"
             mono
@@ -142,7 +142,7 @@ export function StudentDrawer({
         </span>
         <SegmentedControl
           label="Group"
-          className="flex [&>button]:h-9 [&>button]:flex-1"
+          className="flex [&>button]:h-9 [&>button]:flex-1 max-md:[&>button]:h-11"
           options={[
             { value: "basic", label: "basic" },
             { value: "advanced", label: "advanced" },
@@ -186,7 +186,7 @@ export function StudentDrawer({
 
       {error && <FieldError id="student-drawer-error">{error}</FieldError>}
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 max-md:[&>button]:h-11">
         <Button
           variant="primary"
           className="h-[42px] px-[18px]"

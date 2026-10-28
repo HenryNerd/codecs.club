@@ -1,7 +1,7 @@
 /**
- * Time-zone helpers shared by Convex functions and the client. Lesson dates and
- * turn-in closes are stored as UTC milliseconds; the configured school time
- * zone decides which calendar day and wall-clock time they fall on.
+ * Time-zone helpers shared by Convex functions and the client. Lesson dates are
+ * stored as UTC milliseconds; the configured school time zone decides which
+ * calendar day and wall-clock time they fall on.
  */
 export type ZonedParts = {
   year: number;
@@ -54,29 +54,4 @@ export function parseClockTime(value: string): { hour: number; minute: number } 
   const match = /^(\d{1,2}):(\d{2})$/.exec(value);
   if (!match) throw new Error(`Invalid time "${value}", expected HH:MM.`);
   return { hour: Number(match[1]), minute: Number(match[2]) };
-}
-
-/**
- * Turn-in closes `turnInDays` calendar days after the lesson's local date, at
- * the configured local close time.
- */
-export function turnInCloseFor(
-  lessonAt: number,
-  settings: { turnInDays: number; closeTime: string; timeZone: string },
-): number {
-  const lesson = zonedParts(lessonAt, settings.timeZone);
-  const closeDate = new Date(
-    Date.UTC(lesson.year, lesson.month - 1, lesson.day + settings.turnInDays),
-  );
-  const { hour, minute } = parseClockTime(settings.closeTime);
-  return zonedTimeToUtc(
-    {
-      year: closeDate.getUTCFullYear(),
-      month: closeDate.getUTCMonth() + 1,
-      day: closeDate.getUTCDate(),
-      hour,
-      minute,
-    },
-    settings.timeZone,
-  );
 }

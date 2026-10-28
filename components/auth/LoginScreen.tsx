@@ -20,22 +20,22 @@ export function LoginScreen() {
 
   return (
     <div className="flex min-h-full flex-col bg-bg">
-      <header className="flex h-[68px] flex-none items-center gap-4 px-6 lg:px-24">
+      <header className="flex h-[68px] flex-none items-center gap-4 px-4 sm:px-6 lg:px-24">
         <span className="text-[22px] leading-none font-extrabold tracking-[-.03em]">CodeCS</span>
-        <span className="ml-auto font-mono text-[13px] font-medium text-ink3">codecs.club</span>
-        <ThemeToggle />
+        <span className="ml-auto font-mono text-[13px] font-medium text-ink3 max-sm:hidden">codecs.club</span>
+        <ThemeToggle className="max-sm:[&>button]:h-10" />
       </header>
-      <main className="grid flex-1 items-center gap-12 px-6 py-8 lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-[72px] lg:px-24">
+      <main className="grid flex-1 items-center gap-12 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-[72px] lg:px-24">
         <StudentSignIn />
-        <aside className="flex flex-col gap-[18px] rounded-[26px] bg-mint-s p-8">
+        <aside className="flex flex-col gap-[18px] rounded-[26px] bg-mint-s p-8 max-sm:p-5">
           <h2 className="m-0 text-[26px] leading-[1.15] font-extrabold tracking-[-.025em]">
             Where’s my code?
           </h2>
           <p className="m-0 text-ink2">
-            It’s printed on the login ticket from your teacher. It stays the same every year.
+            It’s printed on your CodeCS login ticket. It stays the same every year.
           </p>
           <LoginTicket name="Jordan Smith" loginCode="jsmith" example />
-          <p className="m-0 text-sm text-ink2">Lost your ticket? Your teacher can print a new one.</p>
+          <p className="m-0 text-sm text-ink2">Lost your ticket? Ask at the club and we’ll print a new one.</p>
         </aside>
       </main>
       <AdminSignIn />
@@ -148,7 +148,7 @@ function AdminSignIn() {
   }
 
   return (
-    <footer className="mx-6 mb-6 flex-none rounded-[20px] bg-sf px-6 pt-[18px] pb-5">
+    <footer className="mx-4 mb-6 flex-none rounded-[20px] bg-sf px-4 pt-[18px] pb-5 sm:mx-6 sm:px-6">
       <form
         onSubmit={onSubmit}
         noValidate
@@ -157,11 +157,11 @@ function AdminSignIn() {
       >
         <div className="mr-auto self-center">
           <b id="admin-sign-in-title" className="font-bold">
-            Teachers and admins
+            Admins
           </b>
           <div className="text-sm text-ink3">Sign in with your admin username and password.</div>
         </div>
-        <div className="flex flex-col gap-[5px]">
+        <div className="flex flex-col gap-[5px] max-sm:basis-full">
           <label htmlFor="admin-username" className="text-sm font-bold">
             Username
           </label>
@@ -171,10 +171,10 @@ function AdminSignIn() {
             autoCapitalize="none"
             value={username}
             onChange={(event) => setUsername(event.target.value)}
-            className="h-[42px] w-[210px]"
+            className="h-[42px] w-[210px] max-sm:h-11 max-sm:w-full"
           />
         </div>
-        <div className="flex flex-col gap-[5px]">
+        <div className="flex flex-col gap-[5px] max-sm:basis-full">
           <label htmlFor="admin-password" className="text-sm font-bold">
             Password
           </label>
@@ -184,7 +184,7 @@ function AdminSignIn() {
             autoComplete="current-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="h-[42px] w-[210px]"
+            className="h-[42px] w-[210px] max-sm:h-11 max-sm:w-full"
           />
         </div>
         <Button
@@ -193,7 +193,7 @@ function AdminSignIn() {
           size="lg"
           loading={submitting}
           loadingLabel="Signing in…"
-          className="h-[42px]"
+          className="h-[42px] max-sm:h-11 max-sm:w-full"
         >
           Admin sign in
         </Button>

@@ -12,8 +12,8 @@ const FIXED = "for n in range(10, 0, -1):\n    print(n)\nprint('Liftoff!')\n";
 async function setup() {
   const t = setupConvex();
   const adminUserId = await t.action(internal.admins.createAdmin, {
-    username: "rivera",
-    displayName: "Ms. Rivera",
+    username: "max",
+    displayName: "Max",
     password: "correct-horse-battery",
   });
   await t.mutation(internal.seed.run, {});
@@ -37,17 +37,16 @@ async function setup() {
         )
         .unique(),
     ))!;
-  /** Moves Countdown's turn-in close (null removes the lesson date). */
-  const setClose = (closesAt: number | null) =>
+  /** Moves Countdown's lesson date (null removes it). */
+  const setLessonDate = (lessonAt: number | null) =>
     t.run(async (ctx) => {
       const schedule = await ctx.db
         .query("lessonSchedules")
         .withIndex("by_dayId_and_year", (q) => q.eq("dayId", countdown.dayId).eq("year", "2026-27"))
         .unique();
-      if (closesAt === null) await ctx.db.delete("lessonSchedules", schedule!._id);
-      else await ctx.db.patch("lessonSchedules", schedule!._id, { turnInClosesAt: closesAt });
+      if (lessonAt === null) await ctx.db.delete("lessonSchedules", schedule!._id);
+      else await ctx.db.patch("lessonSchedules", schedule!._id, { lessonAt });
     });
-  await setClose(Date.now() + 24 * 60 * 60_000);
   const jordan = await student("jsmith");
   const priya = await student("ppatel");
   return {
@@ -58,7 +57,7 @@ async function setup() {
     jordanSession: as(t, jordan.userId),
     countdown,
     workspaceOf,
-    setClose,
+    setLessonDate,
   };
 }
 
@@ -97,41 +96,31 @@ describe("turn in", () => {
     expect(await submissionsOf(t, workspace._id)).toHaveLength(2);
   });
 
-  test("turn-in is refused after the close, but work and retries stay available", async () => {
-    const { t, jordan, jordanSession, workspaceOf, setClose } = await setup();
+  test("turn-in never closes, long after the lesson or with no lesson date", async () => {
+    const { t, jordan, jordanSession, workspaceOf, setLessonDate } = await setup();
     const workspace = await workspaceOf(jordan._id);
+
+    // A lesson months ago still takes a first attempt and later ones.
+    await setLessonDate(Date.now() - 120 * 24 * 60 * 60_000);
     await jordanSession.mutation(api.submissions.turnIn, {
       workspaceId: workspace._id,
-      idempotencyKey: "before-close",
+      idempotencyKey: "months-later",
     });
-
-    await setClose(Date.now() - 1000);
-    await expect(
-      jordanSession.mutation(api.submissions.turnIn, {
-        workspaceId: workspace._id,
-        idempotencyKey: "after-close",
-      }),
-    ).rejects.toThrow(/Turn-in has closed/);
-    // A retry of the click that made it in time still answers with its attempt.
-    expect(
-      await jordanSession.mutation(api.submissions.turnIn, {
-        workspaceId: workspace._id,
-        idempotencyKey: "before-close",
-      }),
-    ).toMatchObject({ attempt: 1, repeated: true });
-    expect(await submissionsOf(t, workspace._id)).toHaveLength(1);
-
-    // Editing, history and the turn-in card keep working.
     await jordanSession.mutation(api.workspaces.saveFiles, {
       workspaceId: workspace._id,
       files: [{ name: "main.py", content: FIXED, baseRevision: 0 }],
     });
+    const again = await jordanSession.mutation(api.submissions.turnIn, {
+      workspaceId: workspace._id,
+      idempotencyKey: "months-later-again",
+    });
+    expect(again).toMatchObject({ attempt: 2, repeated: false });
     const card = await jordanSession.query(api.submissions.forWorkspace, { workspaceId: workspace._id });
-    expect(card.closesAt).toBeLessThan(Date.now());
-    expect(card.latest?.attempt).toBe(1);
+    expect(card).not.toHaveProperty("closesAt");
+    expect(card.latest?.attempt).toBe(2);
 
-    // Unscheduled days have no close.
-    await setClose(null);
+    // Unscheduled days take turn-ins too.
+    await setLessonDate(null);
     expect(
       (
         await jordanSession.mutation(api.submissions.turnIn, {
@@ -139,7 +128,8 @@ describe("turn in", () => {
           idempotencyKey: "unscheduled",
         })
       ).attempt,
-    ).toBe(2);
+    ).toBe(3);
+    expect(await submissionsOf(t, workspace._id)).toHaveLength(3);
   });
 
   test("a submitted snapshot doesn't change when the work is edited or restored", async () => {
@@ -302,7 +292,7 @@ describe("review", () => {
 
     const workspace = await workspaceOf(priya._id);
     const card = await priyaSession.query(api.submissions.forWorkspace, { workspaceId: workspace._id });
-    expect(card.latest).toMatchObject({ attempt: 2, status: "reviewed", reviewerName: "Ms. Rivera" });
+    expect(card.latest).toMatchObject({ attempt: 2, status: "reviewed", reviewerName: "Max" });
     expect(card.feedback).toMatchObject({ attempt: 2, body: "Close! Check the last line against the task." });
     const home = await priyaSession.query(api.student.home, {});
     expect(home.latestFeedback?.body).toBe("Close! Check the last line against the task.");
@@ -312,7 +302,7 @@ describe("review", () => {
     const after = (await admin.query(api.review.attempt, { assignmentId: countdown._id, studentId: priya._id }))!;
     expect(after.selected).toMatchObject({
       status: "reviewed",
-      reviewerName: "Ms. Rivera",
+      reviewerName: "Max",
       privateNote: "Talked about string punctuation in class.",
     });
     const queue = (await admin.query(api.review.queue, { assignmentId: countdown._id }))!;
