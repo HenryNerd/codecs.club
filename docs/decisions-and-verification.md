@@ -1,6 +1,6 @@
 # Decisions and Verification Register
 
-[Documentation index](README.md). Updated October 15, 2026. These are unresolved choices and evidence gaps, not proposed additional features. The documentation describes agreed scope; it does not imply implementation readiness.
+[Documentation index](README.md). Updated October 27, 2026. These are unresolved choices and evidence gaps, not proposed additional features. The documentation describes agreed scope; it does not imply implementation readiness.
 
 ## Resolved
 
@@ -32,12 +32,17 @@ Resolved on October 15, 2026 by the developer:
 | --- | --- |
 | D09 | A student may turn in again before an earlier attempt is reviewed. Each turn-in adds an attempt; the teacher reviews the latest. Earlier unreviewed attempts stay visible to admins (status `superseded`, shown as “replaced”) but leave the review queue and the Review badge. The cutoff still applies to every attempt. |
 
+Resolved on October 27, 2026 by the project owner:
+
+| ID | Decision |
+| --- | --- |
+| D03 | CSV exports with a header row; map first name, last name and optional existing login code. Returning students match by existing login code only; names never automatically merge identities. Every new student is explicitly marked new. Select the target group/curriculum, preview all rows and conflicts, then commit. |
+
 ## Product decisions requiring input
 
 | ID | Decision | Needed before |
 | --- | --- | --- |
 | D02 | Forgotten-password recovery and in-app admin provisioning (interim: the developer creates admins with `npx convex run admins:createAdmin`) | Release |
-| D03 | Spreadsheet columns/formats and stable returning-student match key | Roster import; avoid merging same-name people |
 | D04 | Future lessons available immediately versus admin release | Publication/student day list |
 | D08 | Published edits applied to existing work and any re-evaluation | Versioned assignment publication |
 | D12 | Frontend provider, domain choice, and account ownership | Release |

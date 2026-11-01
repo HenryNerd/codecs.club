@@ -11,7 +11,7 @@ The non-student side uses specific admin usernames and passwords backed by Conve
 - Persist each admin identity and authentication records in Convex; store password hashes rather than readable passwords.
 - Admin sign-in opens the admin dashboard, with visible signed-in identity and sign-out.
 - Check admin authorization in backend operations as well as page navigation. A student session cannot perform management operations.
-- Authentication uses Convex Auth’s password provider. Until in-app provisioning exists, a developer creates admin accounts with `npx convex run admins:createAdmin` (see [deployment](deployment.md#first-time-setup)); forgotten-password recovery is still pending (D02).
+- Authentication uses Convex Auth’s password provider. Settings includes Teacher Accounts with first and last names, automatically generated name-based login codes, student-style avatars, editing (including password resets), and deletion. Teacher login codes stay stable when names are edited. Teachers have full admin access and cannot delete their own account. Deleting a staff account removes its user, credentials and sessions while keeping audit logs and authored work; deleted staff names remain visible in history. The internal `admins:createAdmin` CLI function remains available for initial setup.
 - Website admin accounts are distinct from developer accounts used to operate the Convex service.
 
 ### Dashboard scope
@@ -66,7 +66,13 @@ UI requirements:
 - Printed tickets include student identity, website address, stable login code, and sign-in instructions.
 - Attendance is Present, Late or Absent for the group’s current lesson date (D11) and remains separate from online presence.
 
-The spreadsheet columns, supported file formats, and persistent-identity matching rule must be agreed before import implementation.
+D03 was approved on October 27, 2026. Import CSV exports (UTF-8, header row, up to 100 students and 1 MB per batch). Map first name and last name; map an existing login-code column when returning students are included. Header names are not fixed. Extra columns are ignored.
+
+Select the target group and curriculum before previewing. Each row defaults to returning; an admin must explicitly check New student for every new identity and leave its existing-code field empty. Returning rows require a known login code; names are never used to merge identities. Same-name new students get a warning and distinct, automatically allocated codes. Preview shows existing identity/group/curriculum, proposed names, codes and row errors before any writes. Returning imports update the name and assignment while preserving identity, code, original year, avatar and all work; students omitted from a file are unchanged.
+
+Imports are atomic and admin-only. Duplicate returning identities, missing names, unknown codes and wrong-group curricula are refused. A stale preview must be reviewed again; retries reuse a receipt to avoid duplicate students or history after a lost response. Every changed student has a history entry with the acting admin, time and previous/new values. Unchanged rows add no change history.
+
+Print tickets previews the selected group's saved roster. Reprint ticket in the student drawer prints that student's saved details after edits are saved. Check or edit the website address in the preview, then use Print / Save PDF. Tickets include the saved name and code, website address and sign-in instructions; app navigation is excluded from print output.
 
 ### Curriculum days and annual scheduling
 
@@ -118,3 +124,69 @@ UI requirements:
 - Distinguish the latest submission and its review state from earlier attempts. A new submission must not appear reviewed merely because an earlier attempt was reviewed.
 - Show help alert status and avoid duplicate alerts for the same unresolved request.
 - Distinguish connected, disconnected, and stale student presence.
+
+### Classroom layout editor
+
+In Assistance, **Edit classroom** opens a layout editor with a student sidebar. Layouts are saved separately for basic and advanced. Add up to 60 desks, drag their handles to move them, select a desk to rotate it in 90-degree steps or remove it, and drag students from the sidebar onto desks. Dropping onto an occupied desk swaps students; removing a desk or dropping its student back into the sidebar unseats the student. Students can also be selected and placed by clicking a desk, and focused desk handles support arrow-key movement.
+
+**Save layout** persists desk positions, rotations and seating together. **Cancel** discards the draft. The room fits its desks automatically, including rotated desks, and scales down to the available width. Concurrent layout or seating changes require reopening edit mode before saving, preventing another admin’s changes from being overwritten.
+
+### Deleting a student
+
+Select a student’s name in Students, then choose **Delete student** in their details panel and confirm. Deletion removes the student from active rosters and classroom seating, disables their login and existing-session access, and closes open help requests. Their saved work, submissions, attendance and change history are retained. Login codes remain reserved so a new student cannot inherit an old identity. Deleted students cannot be updated or matched as returning students through roster import.
+
+## Classes and enrollment history
+
+Settings → Classes creates a named class with an assigned year (`2027` or `2027-28`).
+Classes default to Current; Upcoming classes can be planned before starting them.
+The header class selector switches Students, Curriculum, Assignments, Assistance,
+and Review together. Each newly created class has its own empty curriculum.
+The original Basic and Advanced groups are adopted without changing their data.
+
+Choose a class when adding a student. To reuse a returning student's identity and
+login code, use Settings → Enroll returning student, or Class involvement in the
+student drawer. Upcoming enrollment leaves the student's active placement alone;
+Start class activates its enrollments. Moving between current classes within the
+same year replaces the enrollment; enrollment in another year preserves prior
+participation, work, submissions, and attendance.
+
+Mark as over requires confirmation and permanently archives the class. Archives
+leave the header selector and remain accessible from Settings → Archived classes.
+The archive shows curriculum, assignment content, and the retained roster.
+Server checks reject edits to archived curriculum, attendance, work, checks,
+turn-ins, feedback, and enrollment, including changes through old open tabs.
+
+Class management uses the selected class directly. Lessons (formerly Curriculum)
+shows that class’s lessons and assigned year, without a separate curriculum or
+year selector. Student creation, editing and roster import automatically use
+the chosen class’s content; there is no separate curriculum assignment to manage.
+
+### Reusing lessons and returning students
+
+- Lessons → Import lessons: choose another class (including archives) and select
+  up to ten lessons per import. The copies include slides, covers and assignment
+  content/check rules/starter files, with new independent records. Dates are left
+  unset and assignments are drafts for review before publication. Previously
+  imported source lessons are skipped, including retries.
+- Students → Find returning student: search all retained student identities by
+  first name, last name, full name or exact login code. Results show their last
+  class, original year and existing code so namesakes can be distinguished.
+  Add to class reuses the identity and history; Restore and add also reactivates
+  a removed student. Already enrolled students cannot be added twice. Upcoming
+  enrollment preserves current placement; same-year current enrollment moves it.
+
+Archived classes have a Delete button in Settings. Confirmation removes the class
+from the archive list and lesson-import source choices. This is a soft deletion:
+student involvement, attendance, lessons and saved work remain intact. Only
+admins can delete classes, and current/upcoming classes must be archived first.
+
+### Reusing a room layout
+
+Assistance → Classroom → Import room layout lets you choose another class,
+including an archived class, and preview its desk positions and rotations.
+The preview opens in classroom edit mode: adjust it and Save layout, or Cancel
+to keep the existing room. Source students are never copied. Destination students
+keep matching seat numbers; those whose desks are absent become unseated.
+The existing layout revision and roster checks protect against concurrent edits.
+
+Student desks show red **Away** while the app tab is hidden or its window loses focus, and return to their normal state when the student comes back. Focus is separate from idle activity and is aggregated across browser tabs; another focused app tab keeps the student present. Offline desks retain their disconnected appearance. This reports app visibility/focus, not what the student is doing elsewhere, and does not store a browsing history.

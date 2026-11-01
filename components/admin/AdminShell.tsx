@@ -6,13 +6,11 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useSignOut } from "@/components/auth/RequireRole";
 import { useAdminViewer } from "@/components/auth/ViewerContext";
-import { Avatar } from "@/components/ui/Avatar";
-import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { ProfileMenu } from "@/components/ui/ProfileMenu";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/cn";
+import { ClassArchive } from "./ClassArchive";
 import { GroupProvider, useGroup } from "./GroupContext";
 
 export function AdminShell({ children }: { children: ReactNode }) {
@@ -20,7 +18,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <GroupProvider>
       <div className="flex min-h-full flex-col bg-bg">
         <AdminHeader />
-        <div className="flex flex-1 flex-col">{children}</div>
+        <ClassContent>{children}</ClassContent>
       </div>
     </GroupProvider>
   );
@@ -34,16 +32,15 @@ function AdminHeader() {
   const viewer = useAdminViewer();
   const signOut = useSignOut();
   const pathname = usePathname();
-  const { group, setGroup } = useGroup();
-  const badges = useQuery(api.adminNav.badges);
+  const { group, setGroup, classes } = useGroup();
+  const badges = useQuery(api.adminNav.badges, { group });
 
   const links: Array<{ href: string; label: string; badge?: ReactNode }> = [
     { href: "/admin/students", label: "Students" },
     { href: "/admin/curriculum", label: "Curriculum" },
-    { href: "/admin/assignments", label: "Assignments" },
     {
       href: "/admin/assistance",
-      label: "Assistance",
+      label: "Classroom",
       badge: badges && badges.openHelp > 0 && (
         <Pill tone="amberSolid" className="h-5 px-[7px] font-extrabold">
           <span className="sr-only">, </span>
@@ -82,7 +79,8 @@ function AdminHeader() {
       </span>
       <nav aria-label="Admin" className="flex gap-0.5">
         {links.map((link) => {
-          const current = pathname === link.href || pathname.startsWith(`${link.href}/`);
+          const current = pathname === link.href || pathname.startsWith(`${link.href}/`)
+            || (link.href === "/admin/curriculum" && (pathname === "/admin/assignments" || pathname.startsWith("/admin/assignments/")));
           return (
             <Link
               key={link.href}
@@ -102,23 +100,23 @@ function AdminHeader() {
         })}
       </nav>
       <div className="ml-auto flex items-center gap-2.5">
-        <ThemeToggle className="hidden 2xl:inline-flex" />
-        <SegmentedControl
-          label="Group"
-          className="bg-sf"
-          options={[
-            { value: "basic", label: "basic" },
-            { value: "advanced", label: "advanced" },
-          ]}
-          value={group}
-          onChange={setGroup}
-        />
-        <Avatar name={viewer.name} tone="violet" size={32} className="text-xs" />
-        <b className="text-sm font-bold whitespace-nowrap">{viewer.name}</b>
-        <Button variant="ghost" size="sm" className="h-[34px]" onClick={() => void signOut()}>
-          Sign out
-        </Button>
+        <select aria-label="Class" className="h-9 max-w-60 rounded-xl border border-bd bg-sf px-3 text-sm font-bold" value={classes.some(c => c.group === group && c.status !== "archived") ? group : ""} onChange={e => setGroup(e.target.value)}>
+          <option value="" disabled>Select class</option>
+          {classes.filter(c => c.status !== "archived").map(c => <option key={c._id} value={c.group}>{c.name} · {c.year}{c.status === "upcoming" ? " · Upcoming" : ""}</option>)}
+        </select>
+        <ProfileMenu name={viewer.name} color={viewer.avatarColor} onSignOut={() => void signOut()} />
       </div>
     </header>
   );
+}
+
+
+function ClassContent({ children }: { children: ReactNode }) {
+  const { group, selectedClass } = useGroup();
+  const pathname = usePathname();
+  const archived = selectedClass?.status === "archived" && pathname !== "/admin/settings";
+  return <div key={group} className="flex flex-1 flex-col">
+    {archived && <p role="status" className="mx-7 rounded-xl bg-amb-s p-3 font-bold">{selectedClass.name} · {selectedClass.year} · Archived — read-only. Open Settings to choose another class.</p>}
+    {archived ? <ClassArchive /> : children}
+  </div>;
 }
