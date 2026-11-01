@@ -1,9 +1,10 @@
+import { writableClass } from "./lib/classes";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { appError } from "./lib/errors";
 import { sameFiles } from "./lib/workFiles";
-import { submissionStatusValidator } from "./schema";
+import { submissionStatusValidator, reviewDecisionValidator } from "./schema";
 import { latestVersion, requireOwnWorkspace, snapshot, workingFiles } from "./workspaces";
 
 /**
@@ -64,6 +65,7 @@ export const turnIn = mutation({
   }),
   handler: async (ctx, args) => {
     const { userId, workspace } = await requireOwnWorkspace(ctx, args.workspaceId);
+    await writableClass(ctx, workspace.group);
     const key = args.idempotencyKey;
     if (key.length < 8 || key.length > 100) {
       throw appError("INVALID", "Something went wrong. Reload the page and try again.");
@@ -172,7 +174,7 @@ export const forWorkspace = query({
         attempt: v.number(),
         submittedAt: v.number(),
         versionNumber: v.number(),
-        status: submissionStatusValidator,
+        status: submissionStatusValidator, reviewDecision: v.optional(reviewDecisionValidator),
         reviewedAt: v.union(v.number(), v.null()),
         reviewerName: v.union(v.string(), v.null()),
       }),
@@ -211,7 +213,7 @@ export const forWorkspace = query({
         attempt: newest.attempt,
         submittedAt: newest.submittedAt,
         versionNumber: submitted?.number ?? 0,
-        status: newest.status,
+        status: newest.status, reviewDecision: newest.reviewDecision,
         reviewedAt: newest.reviewedAt ?? null,
         reviewerName: newest.reviewedBy ? await adminName(ctx, newest.reviewedBy) : null,
       };
