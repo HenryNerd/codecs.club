@@ -13,8 +13,7 @@ import { homeFor, useViewer } from "./useViewer";
 export function LoginScreen() {
   const state = useViewer();
   const router = useRouter();
-  const [brandClicks, setBrandClicks] = useState(0);
-  const showTeacherSignIn = brandClicks >= 3;
+  const [showTeacherSignIn, setShowTeacherSignIn] = useState(false);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -42,9 +41,11 @@ export function LoginScreen() {
   return (
     <div className="flex min-h-full flex-col bg-bg">
       <header className="flex h-[68px] flex-none items-center gap-4 px-6 lg:px-24">
-        <button type="button" onClick={() => setBrandClicks(count => Math.min(3, count + 1))}
-          aria-expanded={showTeacherSignIn} aria-controls={showTeacherSignIn ? "teacher-sign-in" : undefined}
-          className="cursor-pointer rounded border-0 bg-transparent p-0 text-[22px] leading-none font-extrabold tracking-[-.03em] text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-mint">CodeCS</button>
+        <span className="text-[22px] font-extrabold tracking-[-.03em] text-ink">CodeCS</span>
+        <Button type="button" variant="secondary" onClick={() => {
+          setShowTeacherSignIn(true);
+          document.getElementById("admin-username")?.focus();
+        }} aria-expanded={showTeacherSignIn} aria-controls={showTeacherSignIn ? "teacher-sign-in" : undefined}>Teacher sign in</Button>
         <span className="ml-auto font-mono text-[13px] font-medium text-ink3">codecs.club</span>
       </header>
       <main className="grid flex-1 items-center gap-12 px-6 py-8 lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-[72px] lg:px-24">

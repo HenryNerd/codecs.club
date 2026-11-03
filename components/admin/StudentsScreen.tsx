@@ -15,6 +15,7 @@ import { useNow } from "@/lib/useNow";
 import { AttendanceControl, type AttendanceStatus } from "./AttendanceControl";
 import { useGroup } from "./GroupContext";
 
+import { useUnsavedWork } from "./UnsavedWork";
 import { AddStudentsDialog } from "./AddStudentsDialog";
 import { StudentDrawer } from "./StudentDrawer";
 import { LoginTickets, type TicketStudent } from "./LoginTickets";
@@ -35,6 +36,8 @@ export function StudentsScreen() {
   const [tickets, setTickets] = useState<{ students: TicketStudent[]; address: string } | null>(null);
   const [selectedId, setSelectedId] = useState<Id<"students"> | null>(null);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
+
+  useUnsavedWork(draft.scheduleId === scheduleId && Object.keys(draft.marks).length > 0, "attendance");
 
   if (roster === undefined) return <LoadingState label="Loading students…" />;
 

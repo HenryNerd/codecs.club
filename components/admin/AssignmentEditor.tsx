@@ -16,6 +16,8 @@ import { errorMessage } from "@/lib/errors";
 import { renderInlineMarkdown } from "@/lib/inlineMarkdown";
 import { useGroup } from "./GroupContext";
 
+import { useUnsavedWork } from "./UnsavedWork";
+
 type Content = typeof api.adminAssignments.save._args.content;
 type Loaded = NonNullable<typeof api.adminAssignments.get._returnType>;
 type Revision = NonNullable<typeof api.adminAssignments.revision._returnType>;
@@ -54,6 +56,7 @@ function EditorForm({ loaded, initialDay, days }: { loaded: Loaded | null; initi
   const [message, setMessage] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const dirty = JSON.stringify(content) !== baseline;
+  useUnsavedWork(dirty, "assignment");
   const day = days.find(d => d._id === dayId);
   const label = loaded ? `Day ${loaded.day.order}: ${loaded.day.topic}` : day ? `Day ${day.order}: ${day.topic}` : "Lesson";
   const rule = validatePartialRule(content.parts.length, content.partialMin);

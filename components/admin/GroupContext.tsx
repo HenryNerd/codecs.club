@@ -5,6 +5,8 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
+import { useConfirmLeave } from "./UnsavedWork";
+
 export type Group = string;
 type Class = typeof api.classes.list._returnType[number];
 
@@ -27,7 +29,9 @@ export function GroupProvider({ children }: { children: ReactNode }) {
   // Admin screens render only on the client (after the role check), so
   // reading storage during the first render cannot cause a hydration mismatch.
   const [group, setGroupState] = useState<Group>(readSavedGroup);
+  const confirmLeave = useConfirmLeave();
   const setGroup = (next: Group) => {
+    if (next === group || !confirmLeave()) return;
     setGroupState(next);
     try {
       localStorage.setItem(STORAGE_KEY, next);

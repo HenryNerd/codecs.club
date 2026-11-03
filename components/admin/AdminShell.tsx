@@ -13,14 +13,16 @@ import { cn } from "@/lib/cn";
 import { ClassArchive } from "./ClassArchive";
 import { GroupProvider, useGroup } from "./GroupContext";
 
+import { UnsavedWorkProvider, useConfirmLeave } from "./UnsavedWork";
+
 export function AdminShell({ children }: { children: ReactNode }) {
   return (
-    <GroupProvider>
+    <UnsavedWorkProvider><GroupProvider>
       <div className="flex min-h-full flex-col bg-bg">
         <AdminHeader />
         <ClassContent>{children}</ClassContent>
       </div>
-    </GroupProvider>
+    </GroupProvider></UnsavedWorkProvider>
   );
 }
 
@@ -29,6 +31,7 @@ function badgeText(count: number) {
 }
 
 function AdminHeader() {
+  const confirmLeave = useConfirmLeave();
   const viewer = useAdminViewer();
   const signOut = useSignOut();
   const pathname = usePathname();
@@ -69,6 +72,7 @@ function AdminHeader() {
       <span className="mr-4 flex items-center gap-2">
         <Link
           href="/admin/students"
+          onNavigate={e => { if (!confirmLeave()) e.preventDefault(); }}
           className="text-[21px] leading-none font-extrabold tracking-[-.03em] text-ink no-underline"
         >
           CodeCS
@@ -85,6 +89,7 @@ function AdminHeader() {
             <Link
               key={link.href}
               href={link.href}
+              onNavigate={e => { if (!confirmLeave()) e.preventDefault(); }}
               aria-current={current ? "page" : undefined}
               className={cn(
                 "flex h-9 items-center gap-[7px] rounded-[10px] px-[11px] text-[14.5px] no-underline",
@@ -104,7 +109,7 @@ function AdminHeader() {
           <option value="" disabled>Select class</option>
           {classes.filter(c => c.status !== "archived").map(c => <option key={c._id} value={c.group}>{c.name} · {c.year}{c.status === "upcoming" ? " · Upcoming" : ""}</option>)}
         </select>
-        <ProfileMenu name={viewer.name} color={viewer.avatarColor} onSignOut={() => void signOut()} />
+        <ProfileMenu name={viewer.name} color={viewer.avatarColor} onSignOut={() => { if (confirmLeave()) void signOut(); }} />
       </div>
     </header>
   );

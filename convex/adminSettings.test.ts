@@ -72,3 +72,40 @@ test("switching school year does not relabel prior schedules or invent new ones"
   expect(await t.run(ctx => ctx.db.get("lessonSchedules", scheduleId))).toEqual(before);
   expect((await admin.query(api.adminSettings.get, {})).currentYear).toBe("2027-28");
 });
+
+test("global timing updates current and upcoming class years while leaving archived schedules intact", async () => {
+  const { t, admin, initial, scheduleId } = await setup();
+  const ids = await t.run(async ctx => {
+    await ctx.db.insert("classes", { group: "basic", name: "Basic", year: "2026-27", status: "current" });
+    const ids = [];
+    for (const status of ["upcoming", "archived"] as const) {
+      await ctx.db.insert("classes", { group: status, name: status, year: "2027-28", status });
+      const curriculumId = await ctx.db.insert("curricula", { group: status, name: status });
+      const dayId = await ctx.db.insert("days", { curriculumId, topic: status, order: 1 });
+      ids.push(await ctx.db.insert("lessonSchedules", { dayId, year: "2027-28", lessonAt: 1800000000000, turnInClosesAt: 1 }));
+    }
+    return ids;
+  });
+  const input = { ...initial, turnInDays: 3 };
+  const preview = await admin.query(api.adminSettings.preview, input);
+  expect(preview.deadlines.map(d => d.id).sort()).toEqual([scheduleId, ids[0]].sort());
+  await admin.mutation(api.adminSettings.save, { ...input, fingerprint: preview.fingerprint });
+  for (const id of [scheduleId, ids[0]]) {
+    const row = (await t.run(ctx => ctx.db.get("lessonSchedules", id)))!;
+    expect(row.turnInClosesAt).toBe(turnInCloseFor(row.lessonAt, input));
+  }
+  expect((await t.run(ctx => ctx.db.get("lessonSchedules", ids[1])))?.turnInClosesAt).toBe(1);
+});
+
+test("manual lessons accept the hundredth and reject the hundred-and-first atomically", async () => {
+  const { t, admin } = await setup();
+  const curriculumId = await t.run(async ctx => {
+    const id = await ctx.db.insert("curricula", { group: "capacity", name: "Capacity" });
+    for (let order = 1; order <= 99; order++) await ctx.db.insert("days", { curriculumId: id, order, topic: "Existing" });
+    return id;
+  });
+  const input = { curriculumId, topic: "Boundary", date: "2026-11-03", time: "16:00" };
+  await admin.mutation(api.adminCurriculum.addLesson, input);
+  await expect(admin.mutation(api.adminCurriculum.addLesson, input)).rejects.toThrow(/100 lessons/);
+  expect(await t.run(ctx => ctx.db.query("days").withIndex("by_curriculumId_and_order", q => q.eq("curriculumId", curriculumId)).take(101))).toHaveLength(100);
+});

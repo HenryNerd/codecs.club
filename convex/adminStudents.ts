@@ -1,5 +1,5 @@
 import { assignmentSummaries, dayValidator } from "./student";
-import { classFor, classYear, writableClass, rememberEnrollment, requireEnrollmentSpace } from "./lib/classes";
+import { classFor, classYear, writableClass, rememberEnrollment, transitionEnrollment } from "./lib/classes";
 import { avatarColors, avatarColorValidator, studentAvatarColor } from "./lib/studentAvatars";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
@@ -234,7 +234,7 @@ export const updateStudent = mutation({
     const student = await ctx.db.get("students", args.studentId);
     if (student === null || student.deletedAt !== undefined) throw appError("NOT_FOUND", "Student not found.");
     await writableClass(ctx, student.group);
-    const targetClass = await writableClass(ctx, args.group);
+    await writableClass(ctx, args.group);
     await rememberEnrollment(ctx, student);
     const curriculum = await ctx.db.get("curricula", args.curriculumId);
     if (curriculum === null) throw appError("NOT_FOUND", "Curriculum not found.");
@@ -264,23 +264,8 @@ export const updateStudent = mutation({
     };
     const after = { firstName, lastName, loginCode, group: args.group, curriculumId: args.curriculumId };
     if (JSON.stringify(before) === JSON.stringify(after)) return null;
-    if (student.group !== args.group) {
-      const oldClass = await classFor(ctx, student.group), nextClass = await classFor(ctx, args.group);
-      if (oldClass && nextClass && nextClass.status !== "upcoming" && oldClass.year === nextClass.year) {
-        const old = await ctx.db.query("enrollments").withIndex("by_studentId_and_group", q => q.eq("studentId", student._id).eq("group", student.group)).unique();
-        if (old) await ctx.db.delete("enrollments", old._id);
-      }
-    }
-    if (targetClass?.status === "upcoming" && student.group !== args.group) {
-      const existing = await ctx.db.query("enrollments").withIndex("by_studentId_and_group", q => q.eq("studentId", student._id).eq("group", args.group)).unique();
-      if (!existing) { await requireEnrollmentSpace(ctx, args.group); await ctx.db.insert("enrollments", { studentId: student._id, group: args.group, curriculumId: args.curriculumId, year: targetClass.year }); }
-      await ctx.db.patch("students", student._id, { firstName, lastName, loginCode });
-      await ctx.db.patch("users", student.userId, { name: `${firstName} ${lastName}` });
-      await recordAdminChange(ctx, { actorId: userId, table: "enrollments", recordId: student._id, summary: `Enrolled ${firstName} ${lastName} in upcoming class ${targetClass.name}` });
-      return null;
-    }
-    await ctx.db.patch("students", student._id, { ...after, ...(student.group !== args.group ? { seatIndex: undefined } : {}) });
-    await rememberEnrollment(ctx, (await ctx.db.get("students", student._id))!);
+    const placement = await transitionEnrollment(ctx, student, args.group, args.curriculumId);
+    await ctx.db.patch("students", student._id, { firstName, lastName, loginCode });
     await ctx.db.patch("users", student.userId, { name: `${firstName} ${lastName}` });
     await recordAdminChange(ctx, {
       actorId: userId,
@@ -288,7 +273,7 @@ export const updateStudent = mutation({
       recordId: student._id,
       summary: `Updated ${student.firstName} ${student.lastName}`,
       before: { ...before, seatIndex: student.seatIndex ?? null },
-      after: { ...after, seatIndex: student.group !== args.group ? null : student.seatIndex ?? null },
+      after: { ...after, ...placement, seatIndex: placement.seatIndex ?? null },
     });
     return null;
   },

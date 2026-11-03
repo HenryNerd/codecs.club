@@ -252,6 +252,8 @@ export const addLesson = mutation({
     const actual = zonedParts(lessonAt, settings.timeZone);
     if (Object.keys(wall).some(key => wall[key as keyof typeof wall] !== actual[key as keyof typeof actual])) throw appError("INVALID", "Choose a valid date and time in the school time zone.");
     const endsAt = lessonEnd(lessonAt, args.endTime, settings.timeZone);
+    const existingDays = await ctx.db.query("days").withIndex("by_curriculumId_and_order", q => q.eq("curriculumId", args.curriculumId)).take(MAX_DAYS);
+    if (existingDays.length >= MAX_DAYS) throw appError("INVALID", "A class supports up to 100 lessons.");
     const latest = await ctx.db.query("days").withIndex("by_curriculumId_and_order", q => q.eq("curriculumId", args.curriculumId)).order("desc").first();
     const dayId = await ctx.db.insert("days", { curriculumId: args.curriculumId, topic, order: (latest?.order ?? 0) + 1 });
     const scheduleId = await ctx.db.insert("lessonSchedules", { dayId, year, lessonAt, endsAt, turnInClosesAt: turnInCloseFor(lessonAt, settings) });

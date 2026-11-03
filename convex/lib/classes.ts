@@ -31,3 +31,25 @@ export async function requireEnrollmentSpace(ctx: Ctx, group: string) {
   const entries = await ctx.db.query("enrollments").withIndex("by_group", q => q.eq("group", group)).take(500);
   if (entries.length >= 500) throw appError("INVALID", "A class supports up to 500 students.");
 }
+
+/** Apply the same enrollment/placement transition for edits and CSV imports. */
+export async function transitionEnrollment(ctx: MutationCtx, student: Doc<"students">, group: string, curriculumId: Doc<"curricula">["_id"]) {
+  const target = await writableClass(ctx, group);
+  await rememberEnrollment(ctx, student);
+  const upcoming = target?.status === "upcoming" && student.group !== group;
+  const year = await classYear(ctx, group);
+  if (!upcoming && student.group !== group && (await classFor(ctx, student.group))?.year === year) {
+    const source = await ctx.db.query("enrollments").withIndex("by_studentId_and_group", q => q.eq("studentId", student._id).eq("group", student.group)).unique();
+    if (source) await ctx.db.delete("enrollments", source._id);
+  }
+  const destination = await ctx.db.query("enrollments").withIndex("by_studentId_and_group", q => q.eq("studentId", student._id).eq("group", group)).unique();
+  if (destination) await ctx.db.patch("enrollments", destination._id, { curriculumId, year });
+  else {
+    await requireEnrollmentSpace(ctx, group);
+    await ctx.db.insert("enrollments", { studentId: student._id, group, curriculumId, year });
+  }
+  const placement = upcoming ? { group: student.group, curriculumId: student.curriculumId } : { group, curriculumId };
+  const seatIndex = !upcoming && student.group !== group ? undefined : student.seatIndex;
+  await ctx.db.patch("students", student._id, { ...placement, seatIndex });
+  return { ...placement, seatIndex };
+}

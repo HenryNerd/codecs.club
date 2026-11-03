@@ -15,6 +15,7 @@ import type * as adminNav from "../adminNav.js";
 import type * as adminSettings from "../adminSettings.js";
 import type * as adminStudents from "../adminStudents.js";
 import type * as admins from "../admins.js";
+import type * as archiveRecords from "../archiveRecords.js";
 import type * as assistance from "../assistance.js";
 import type * as auth from "../auth.js";
 import type * as checks from "../checks.js";
@@ -61,6 +62,7 @@ declare const fullApi: ApiFromModules<{
   adminSettings: typeof adminSettings;
   adminStudents: typeof adminStudents;
   admins: typeof admins;
+  archiveRecords: typeof archiveRecords;
   assistance: typeof assistance;
   auth: typeof auth;
   checks: typeof checks;

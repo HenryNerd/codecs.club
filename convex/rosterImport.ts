@@ -1,4 +1,4 @@
-import { classYear, writableClass, rememberEnrollment, requireEnrollmentSpace } from "./lib/classes";
+import { classYear, writableClass, transitionEnrollment, requireEnrollmentSpace } from "./lib/classes";
 import { v } from "convex/values";
 import { query, mutation, type QueryCtx } from "./_generated/server";
 import { groupValidator } from "./schema";
@@ -61,7 +61,7 @@ export const commit = mutation({
   returns: v.array(v.id("students")),
   handler: async (ctx, args) => {
     const { userId: actorId } = await requireAdmin(ctx);
-    const classroom = await writableClass(ctx, args.group);
+    await writableClass(ctx, args.group);
     if (!args.key || args.key.length > 100) throw appError("INVALID", "Invalid import retry key.");
     const payload = JSON.stringify({ group: args.group, curriculumId: args.curriculumId, rows: args.rows, fingerprint: args.fingerprint });
     const receipt = await ctx.db.query("rosterImports").withIndex("by_actorId_and_key", q => q.eq("actorId", actorId).eq("key", args.key)).unique();
@@ -79,10 +79,10 @@ export const commit = mutation({
       if (id) {
         if (row.before !== JSON.stringify(fields)) {
           const student = (await ctx.db.get("students", id))!;
-          await rememberEnrollment(ctx, student);
-          await ctx.db.patch("students", id, { ...fields, ...(classroom?.status === "upcoming" ? { group: student.group, curriculumId: student.curriculumId } : {}), ...(student.group !== args.group ? { seatIndex: undefined } : {}) });
+          const placement = await transitionEnrollment(ctx, student, args.group, args.curriculumId);
+          await ctx.db.patch("students", id, { firstName: row.firstName, lastName: row.lastName, loginCode: row.loginCode });
           await ctx.db.patch("users", student.userId, { name: `${row.firstName} ${row.lastName}` });
-          await recordAdminChange(ctx, { actorId, table: "students", recordId: id, summary: `Roster import updated ${row.firstName} ${row.lastName}`, before: { ...JSON.parse(row.before!), seatIndex: student.seatIndex ?? null }, after: { ...fields, seatIndex: student.group !== args.group ? null : student.seatIndex ?? null } });
+          await recordAdminChange(ctx, { actorId, table: "students", recordId: id, summary: `Roster import updated ${row.firstName} ${row.lastName}`, before: { ...JSON.parse(row.before!), seatIndex: student.seatIndex ?? null }, after: { ...fields, ...placement, seatIndex: placement.seatIndex ?? null } });
         }
       } else {
         const userId = await ctx.db.insert("users", { name: `${row.firstName} ${row.lastName}`, role: "student" });
@@ -91,6 +91,7 @@ export const commit = mutation({
         await recordAdminChange(ctx, { actorId, table: "students", recordId: id, summary: `Roster import added ${row.firstName} ${row.lastName}`, after });
       }
       const existingEnrollment = await ctx.db.query("enrollments").withIndex("by_studentId_and_group", q => q.eq("studentId", id!).eq("group", args.group)).unique();
+      if (existingEnrollment) await ctx.db.patch("enrollments", existingEnrollment._id, { curriculumId: args.curriculumId });
       if (!existingEnrollment) { await requireEnrollmentSpace(ctx, args.group); await ctx.db.insert("enrollments", { studentId: id, group: args.group, curriculumId: args.curriculumId, year: await classYear(ctx, args.group) }); }
       studentIds.push(id);
     }

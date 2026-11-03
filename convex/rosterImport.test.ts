@@ -121,3 +121,29 @@ test("target group and batch limits are enforced on the server", async () => {
   await expect(admin.query(api.rosterImport.preview, { ...args, rows: [] })).rejects.toThrow(/1–100/);
   await expect(admin.query(api.rosterImport.preview, { ...args, rows: Array.from({ length: 101 }, () => args.rows[0]) })).rejects.toThrow(/1–100/);
 });
+
+test.each(["current", "upcoming"] as const)("CSV transition into %s updates enrollment and preserves only future-placement seats", async status => {
+  const { t, admin, args, nextId } = await setup();
+  await t.run(async ctx => {
+    await ctx.db.insert("classes", { group: "basic", name: "Basic", year: "2026-27", status: "current" });
+    await ctx.db.insert("classes", { group: "advanced", name: "Advanced", year: "2026-27", status });
+  });
+  const first = await admin.query(api.rosterImport.preview, args);
+  const [id] = await admin.mutation(api.rosterImport.commit, { ...args, fingerprint: first.fingerprint, key: "start" });
+  await t.run(async ctx => {
+    await ctx.db.patch("students", id, { seatIndex: 4 });
+    await ctx.db.insert("enrollments", { studentId: id, group: "advanced", curriculumId: args.curriculumId, year: "2026-27" });
+  });
+  const input = { group: "advanced", curriculumId: nextId, rows: [{ ...args.rows[0], mode: "returning" as const, loginCode: first.rows[0].loginCode }] };
+  const preview = await admin.query(api.rosterImport.preview, input);
+  await admin.mutation(api.rosterImport.commit, { ...input, fingerprint: preview.fingerprint, key: "transfer" });
+  const student = await t.run(ctx => ctx.db.get("students", id));
+  expect(student?.group).toBe(status === "upcoming" ? "basic" : "advanced");
+  expect(student?.seatIndex).toBe(status === "upcoming" ? 4 : undefined);
+  const source = await admin.query(api.adminStudents.roster, { group: "basic", now: 0 });
+  const target = await admin.query(api.adminStudents.roster, { group: "advanced", now: 0 });
+  expect(source.students.some(s => s._id === id)).toBe(status === "upcoming");
+  expect(target.students.some(s => s._id === id)).toBe(true);
+  const enrollment = await t.run(ctx => ctx.db.query("enrollments").withIndex("by_studentId_and_group", q => q.eq("studentId", id).eq("group", "advanced")).unique());
+  expect(enrollment?.curriculumId).toBe(nextId);
+});
