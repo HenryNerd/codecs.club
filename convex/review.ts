@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { getSettings, requireAdmin } from "./lib/access";
+import { adminName } from "./lib/adminNames";
 import { recordAdminChange } from "./lib/changes";
 import { appError } from "./lib/errors";
 import {
@@ -14,14 +15,14 @@ import {
   partKindValidator,
   submissionStatusValidator, reviewDecisionValidator,
 } from "./schema";
-import { adminName, feedbackRows, scheduleFor } from "./submissions";
+import { feedbackRows, scheduleFor } from "./submissions";
 
 /**
  * Admin Review: per assignment, every student's latest attempt, the submitted
- * snapshot with its check and expected output, and the teacher's optional
+ * snapshot with its check and expected output, and the admin's optional
  * student-visible feedback and private note (D07). Only the latest attempt is
  * reviewed; earlier unreviewed attempts were superseded when the student
- * turned in again (D09). Reviewing never changes the turn-in close.
+ * turned in again (D09).
  */
 
 const MAX_DAYS = 100;
@@ -271,8 +272,6 @@ export const attempt = query({
         firstName: v.string(),
         loginCode: v.string(),
       }),
-      /** Turn-in close for the year this work belongs to; null when unscheduled. */
-      turnInClosesAt: v.union(v.number(), v.null()),
       savedAt: v.union(v.number(), v.null()),
       attempts: v.array(
         v.object({
@@ -330,12 +329,6 @@ export const attempt = query({
         q.eq("studentId", student._id).eq("assignmentId", assignment._id),
       )
       .unique();
-    const schedule = await scheduleFor(
-      ctx,
-      assignment.dayId,
-      workspace?.year ?? settings.currentYear,
-    );
-
     const submissions = workspace
       ? await ctx.db
           .query("submissions")
@@ -407,7 +400,6 @@ export const attempt = query({
         firstName: student.firstName,
         loginCode: student.loginCode,
       },
-      turnInClosesAt: schedule?.turnInClosesAt ?? null,
       savedAt: workspace?.updatedAt ?? null,
       attempts,
       selected,

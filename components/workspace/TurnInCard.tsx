@@ -20,8 +20,8 @@ function newKey(): string {
 
 /**
  * Turn in: saves, then has Convex snapshot the saved files as the next
- * attempt. Shows the latest attempt, its review and the teacher's feedback.
- * After the close, editing, Versions and feedback stay available.
+ * attempt. Shows the latest attempt, its review and the admin's feedback.
+ * Turn-in never closes: students can turn in again at any time.
  */
 export function TurnInCard({
   workspaceId,
@@ -42,8 +42,6 @@ export function TurnInCard({
   // can't turn in twice.
   const pendingKey = useRef<string | null>(null);
 
-  const closesAt = status?.closesAt ?? null;
-  const closed = closesAt !== null && now >= closesAt;
   const latest = status?.latest ?? null;
   const feedback = status?.feedback ?? null;
 
@@ -63,7 +61,7 @@ export function TurnInCard({
       pendingKey.current = null;
       setConfirmation(`Turned in v${result.versionNumber} as attempt ${result.attempt}. You can keep editing.`);
     } catch (e) {
-      // The server answered (e.g. turn-in closed), so the next click is a new turn-in.
+      // The server answered (e.g. it refused the turn-in), so the next click is a new turn-in.
       if (e instanceof ConvexError) pendingKey.current = null;
       setError(errorMessage(e, "Couldn’t turn in. Check your connection and try again."));
     } finally {
@@ -76,16 +74,7 @@ export function TurnInCard({
 
   return (
     <div className="m-2.5 mt-0 flex flex-none flex-col gap-2.5 rounded-2xl bg-bg px-4 pt-3.5 pb-4">
-      <div className="flex items-baseline justify-between gap-2">
-        <b className="font-bold whitespace-nowrap">{latest ? "Turned in" : "Not turned in"}</b>
-        <span className="text-[13px] whitespace-nowrap text-ink3">
-          {status === undefined
-            ? null
-            : closesAt === null
-              ? "Not scheduled"
-              : `${closed ? "Closed" : "Closes"} ${formatWeekdayDateTime(closesAt, timeZone)}`}
-        </span>
-      </div>
+      <b className="font-bold">{latest ? "Turned in" : "Not turned in"}</b>
       {latest?.reviewDecision && <Pill tone={latest.reviewDecision === "needsWork" ? "coral" : "mint"}>{latest.reviewDecision === "needsWork" ? "Needs Work" : "Done"}</Pill>}
       {latest && (
         <span role="status" className="-mt-1 text-[13px] text-ink2">
@@ -116,7 +105,7 @@ export function TurnInCard({
       <Button
         variant="primary"
         className="h-[46px] w-full rounded-xl text-base"
-        disabled={status === undefined || closed || busy}
+        disabled={status === undefined || busy}
         loading={busy}
         loadingLabel="Turning in…"
         onClick={() => void submit()}
@@ -130,10 +119,6 @@ export function TurnInCard({
       ) : confirmation ? (
         <span role="status" className="text-[12.5px] font-semibold text-mint-i">
           ✓ {confirmation}
-        </span>
-      ) : closed ? (
-        <span className="text-[12.5px] text-ink3">
-          Turn-in has closed. Your work is still saved: you can keep editing, see your versions and read feedback.
         </span>
       ) : null}
     </div>

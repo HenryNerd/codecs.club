@@ -2,6 +2,7 @@ import { writableClass } from "./lib/classes";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
+import { adminFirstName } from "./lib/adminNames";
 import { appError } from "./lib/errors";
 import { sameFiles } from "./lib/workFiles";
 import { submissionStatusValidator, reviewDecisionValidator } from "./schema";
@@ -12,7 +13,8 @@ import { latestVersion, requireOwnWorkspace, snapshot, workingFiles } from "./wo
  * snapshot (a version) for review. The browser saves first; Convex then pins
  * exactly what is saved. Retries with the same idempotency key return the
  * attempt they already made. Turning in again before review adds an attempt
- * and takes the earlier one out of the review queue (D09).
+ * and takes the earlier one out of the review queue (D09). Turn-in never
+ * closes: there is no due date or cutoff (D05 superseded).
  */
 
 /** Earlier attempts read when looking for the latest student-visible feedback. */
@@ -29,15 +31,6 @@ export async function scheduleFor(
     .query("lessonSchedules")
     .withIndex("by_dayId_and_year", (q) => q.eq("dayId", dayId).eq("year", year))
     .unique();
-}
-
-/** An admin's display name for feedback and review labels. */
-export async function adminName(ctx: Pick<QueryCtx, "db">, userId: Id<"users">): Promise<string> {
-  const admin = await ctx.db
-    .query("admins")
-    .withIndex("by_userId", (q) => q.eq("userId", userId))
-    .unique();
-  return admin?.displayName ?? "Your teacher";
 }
 
 export async function feedbackRows(
@@ -71,7 +64,7 @@ export const turnIn = mutation({
       throw appError("INVALID", "Something went wrong. Reload the page and try again.");
     }
 
-    // A retry returns the attempt it already made, even if turn-in has closed since.
+    // A retry returns the attempt it already made.
     const existing = await ctx.db
       .query("submissions")
       .withIndex("by_idempotencyKey", (q) => q.eq("idempotencyKey", key))
@@ -92,13 +85,6 @@ export const turnIn = mutation({
     const assignment = await ctx.db.get("assignments", workspace.assignmentId);
     if (assignment === null) throw appError("NOT_FOUND", "This assignment isn’t available.");
     const now = Date.now();
-    const schedule = await scheduleFor(ctx, assignment.dayId, workspace.year);
-    if (schedule !== null && now > schedule.turnInClosesAt) {
-      throw appError(
-        "CONFLICT",
-        "Turn-in has closed for this assignment. Your work is still saved, and you can keep editing.",
-      );
-    }
 
     const files = snapshot(await workingFiles(ctx, workspace._id));
     if (files.length === 0) throw appError("INVALID", "There are no files to turn in.");
@@ -158,14 +144,13 @@ export const turnIn = mutation({
 });
 
 /**
- * The turn-in card: when turn-in closes, which version Turn in would send,
- * the latest attempt and its review, and the latest student-visible feedback.
- * Private notes are never read here.
+ * The turn-in card: which version Turn in would send, the latest attempt and
+ * its review, and the latest student-visible feedback. Admin names are first
+ * names. Private notes are never read here.
  */
 export const forWorkspace = query({
   args: { workspaceId: v.id("workspaces") },
   returns: v.object({
-    closesAt: v.union(v.number(), v.null()),
     /** The version a turn-in would send now (the latest, or the next one if files changed). */
     nextVersion: v.number(),
     latest: v.union(
@@ -191,9 +176,6 @@ export const forWorkspace = query({
   }),
   handler: async (ctx, args) => {
     const { workspace } = await requireOwnWorkspace(ctx, args.workspaceId);
-    const assignment = await ctx.db.get("assignments", workspace.assignmentId);
-    const schedule = assignment ? await scheduleFor(ctx, assignment.dayId, workspace.year) : null;
-
     const version = await latestVersion(ctx, workspace._id);
     const files = await workingFiles(ctx, workspace._id);
     const versionCount = Math.max(workspace.latestVersion, version?.number ?? 0);
@@ -215,7 +197,7 @@ export const forWorkspace = query({
         versionNumber: submitted?.number ?? 0,
         status: newest.status, reviewDecision: newest.reviewDecision,
         reviewedAt: newest.reviewedAt ?? null,
-        reviewerName: newest.reviewedBy ? await adminName(ctx, newest.reviewedBy) : null,
+        reviewerName: newest.reviewedBy ? await adminFirstName(ctx, newest.reviewedBy) : null,
       };
     }
 
@@ -228,12 +210,12 @@ export const forWorkspace = query({
       feedback = {
         attempt: submission.attempt,
         body: written.body,
-        authorName: await adminName(ctx, written.authorId),
+        authorName: await adminFirstName(ctx, written.authorId),
         createdAt: written.createdAt,
       };
       break;
     }
 
-    return { closesAt: schedule?.turnInClosesAt ?? null, nextVersion, latest, feedback };
+    return { nextVersion, latest, feedback };
   },
 });

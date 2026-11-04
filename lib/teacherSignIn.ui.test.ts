@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
 vi.mock("../components/auth/useViewer", () => ({ useViewer: () => ({ status: "signedOut" }), homeFor: () => "/" }));
 import { LoginScreen } from "../components/auth/LoginScreen";
 
-test("visible teacher sign-in opens in one activation and focuses the username", async () => {
+test("visible admin sign-in opens in one activation and focuses the username", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   Element.prototype.scrollIntoView = vi.fn();
   const container = document.createElement("div");
@@ -15,7 +15,7 @@ test("visible teacher sign-in opens in one activation and focuses the username",
   const root = createRoot(container);
   try {
     await act(async () => root.render(createElement(LoginScreen)));
-    const button = [...container.querySelectorAll("button")].find(b => b.textContent === "Teacher sign in")!;
+    const button = [...container.querySelectorAll("button")].find(b => b.textContent === "Admin sign in")!;
     expect(button).toBeTruthy();
     expect(button.getAttribute("aria-expanded")).toBe("false");
     await act(async () => button.click());

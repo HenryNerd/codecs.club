@@ -78,7 +78,7 @@ function EditorForm({ loaded, initialDay, days }: { loaded: Loaded | null; initi
     } catch (err) { setError(errorMessage(err)); } finally { setSaving(false); }
   }
   function updatePart(index: number, changes: Partial<Content["parts"][number]>) { set("parts", content.parts.map((part, i) => i === index ? { ...part, ...changes } : part)); }
-  return <main className="flex flex-col gap-4 px-7 pt-4 pb-10">
+  return <main className="flex flex-col gap-4 px-4 md:px-7 pt-4 pb-10">
     <Link href="/admin/curriculum" onNavigate={leave} className="self-start text-sm font-bold text-mint-i">← Back to curriculum</Link>
     <header className="flex flex-wrap items-end gap-3">
       <div className="min-w-0 flex-1"><div className="text-sm text-ink3">Curriculum / {label} / Assignments</div><h1 className="m-0 text-4xl font-extrabold tracking-tight">{content.title || "New assignment"}</h1></div>
@@ -109,7 +109,7 @@ function EditorForm({ loaded, initialDay, days }: { loaded: Loaded | null; initi
       </fieldset>
       <fieldset disabled={saving} className="m-0 flex min-w-0 flex-col gap-3 self-start rounded-3xl border-0 bg-sf p-5">
         <h2 className="m-0 text-2xl font-bold">Evaluation</h2>
-        {content.type === "open" ? <p className="text-sm">Teacher feedback only; no guided checks required.</p> : <>
+        {content.type === "open" ? <p className="text-sm">Admin feedback only; no guided checks required.</p> : <>
           <p className="m-0 text-xs text-ink3">Checks compare output, ignoring whitespace.</p>
           {content.parts.map((part, i) => <div key={i} className="flex flex-col gap-2 rounded-xl bg-bg p-3">
             <label className="flex flex-col gap-1 text-sm font-bold">Part {i + 1} name<TextInput maxLength={150} value={part.name} onChange={e => updatePart(i, { name: e.target.value })} /></label>

@@ -75,44 +75,38 @@ Whitespace differences must not make otherwise matching output incorrect: disreg
 - Show a checklist of assignment requirements with met/unmet results alongside the overall completion status, so students know what to revise.
 - Preserve original output formatting in the console; whitespace-insensitive comparison applies to checks, not to how output is displayed.
 - Expose version history with inspect and restore actions; identify the version being restored.
-- Preserve prior work when restoring a version or when a teacher edits.
+- Preserve prior work when restoring a version or when an admin edits.
 
-### 6. Ask for help or receive teacher assistance
+### 6. Ask for help or receive assistance
 
-The help button alerts the teacher with the student's assignment context. Teachers can also join directly at any time without student acceptance. Joining produces a visible student notification.
+The help button alerts the admins with the student's assignment context. Admins can also join directly at any time without student acceptance. Joining produces a visible student notification that uses the admin's first name (“Max joined”), never a title.
 
-Teacher and student edit simultaneously, with labeled teacher cursors. The teacher can view code, edit, run it, and send guidance in the app.
+Admin and student edit simultaneously, with labeled admin cursors. The admin can view code, edit, run it, and send guidance in the app.
 
 - Keep Help easy to reach without obscuring Run, Stop, or Turn in.
 - Show that a help request was sent; do not promise an immediate response.
-- Show the assisting teacher's identity, labeled cursor, and active/disconnected state.
-- Attribute teacher execution so students understand who initiated a run.
+- Show the assisting admin's first name, labeled cursor, and active/disconnected state.
+- Attribute admin execution so students understand who initiated a run.
 - Keep guidance readable without covering the task, editor, or output.
 - Synchronize edits without silently replacing either participant's newer work.
 - Preserve work, version history, and guidance after assistance ends.
-- Remote assistance does not depend on whether turn-in is still available.
-
 ### 7. Turn in final work
 
-Turn in submits a final saved version for teacher checking and feedback. Preserve that version separately from later working-copy edits, so review refers to what was actually submitted.
+Turn in submits a final saved version for checking and feedback. Preserve that version separately from later working-copy edits, so review refers to what was actually submitted.
 
-After review, the teacher can return work with feedback. The student can edit it, review it, and turn it in again. Each resubmission preserves the earlier submitted version and feedback and creates a new submitted snapshot; returned work is not permanently locked. A student may also turn in again before review (D09); the teacher reviews the latest attempt.
+After review, an admin can return work with feedback. The student can edit it, review it, and turn it in again. Each resubmission preserves the earlier submitted version and feedback and creates a new submitted snapshot; returned work is not permanently locked. A student may also turn in again before review (D09); an admin reviews the latest attempt.
 
-Resubmission after return is allowed for **completion, partial completion, and no completion** alike, up to the assignment's deadline. A fully completed assignment can still be improved and submitted again; its completion result must not disable resubmission.
+Resubmission is allowed for **completion, partial completion, and no completion** alike, at any time. A fully completed assignment can still be improved and submitted again; its completion result must not disable resubmission.
 
-Turn-in availability is tied to that year's teacher-supplied lesson date and a closing window: by default turn-in closes 14 days after the lesson at 11:59 pm Pacific (D05). Admins can change the window and closing time in Settings, and moving a lesson date moves its close (D06).
+Turn-in never locks (D13, which supersedes the old 14-day window of D05). Students can turn in, and turn in again, whenever they like: there is no due date, no “late” label and no “closing tonight” warning. Lesson dates are still shown; moving one moves only the lesson date (D06).
 
 - Make Turn in distinct from Run and autosave.
 - Save successfully before confirming submission; a failed save cannot produce a successful turn-in message.
 - Show submission confirmation and the submitted version/time.
-- Show when turn-in closes once its date is known.
-- After closing, disable turn-in with a clear explanation; do not imply that saved work is deleted.
-- Keep historical work readable and feedback accessible independently of submission availability.
-- Separate teacher feedback from automated output-check results.
+- Keep historical work readable and feedback accessible.
+- Separate an admin's feedback from automated output-check results, and sign it with the admin's first name (“Note from Max”, “Max reviewed this”).
 - Show returned feedback beside a clear edit/resume action and indicate which submitted version was reviewed.
 - Show resubmission as a new submission without erasing the previous review.
-
-The configured turn-in deadline applies to both initial submissions and resubmissions. Returning work does not automatically bypass the deadline. After closing, students retain access to editing, work history, and feedback; an admin can change the cutoff through the approved dashboard controls.
 
 ### 8. Return and resume
 

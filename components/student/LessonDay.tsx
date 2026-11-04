@@ -7,13 +7,7 @@ import { AssignmentTypeTag, Pill } from "@/components/ui/Pill";
 import { EmptyState, LoadingState } from "@/components/ui/States";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/cn";
-import {
-  formatRelative,
-  formatTime,
-  formatWeekdayDate,
-  formatWeekdayDateTime,
-  isSameDay,
-} from "@/lib/format";
+import { formatRelative, formatTime, formatWeekdayDate, isSameDay } from "@/lib/format";
 import { assignmentStatus, type AssignmentProgress } from "@/lib/progress";
 import { slidesProvider } from "@/lib/slides";
 import { useNow } from "@/lib/useNow";
@@ -59,14 +53,6 @@ export function LessonDay({ dayId }: { dayId: string }) {
               ? `${formatWeekdayDate(day.lessonAt, timeZone)} · ${formatTime(day.lessonAt, timeZone)}`
               : "Not scheduled"}
           </span>
-          {day.turnInClosesAt !== null && (
-            <span className="ml-auto text-ink2">
-              Turn-in {day.turnInClosesAt > now ? "closes" : "closed"}{" "}
-              <b className="font-bold text-ink">
-                {formatWeekdayDateTime(day.turnInClosesAt, timeZone)}
-              </b>
-            </span>
-          )}
         </div>
       </div>
 
@@ -91,7 +77,7 @@ export function LessonDay({ dayId }: { dayId: string }) {
               <div className="text-sm text-ink2">
                 {day.slidesUrl
                   ? "Presented live in class. Open them anytime to look back."
-                  : "Your teacher hasn’t shared slides for this day yet."}
+                  : "Slides for this day haven’t been shared yet."}
               </div>
             </div>
             {day.slidesUrl && (

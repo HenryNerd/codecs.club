@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useId, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { CodeView } from "@/components/ui/CodeView";
+import { PhoneSheet } from "@/components/ui/PhoneSheet";
 import { Pill, type PillTone } from "@/components/ui/Pill";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { EmptyState, LoadingState } from "@/components/ui/States";
@@ -14,7 +15,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/cn";
 import { errorMessage } from "@/lib/errors";
-import { formatRelative, formatShortDate, formatTime, formatWeekdayDate, isSameDay } from "@/lib/format";
+import { formatRelative, formatShortDate, formatTime, isSameDay } from "@/lib/format";
 import { diffOutputs, outputWords, type OutputWord } from "@/lib/outputDiff";
 import { useNow } from "@/lib/useNow";
 import { type Group, useGroup } from "./GroupContext";
@@ -56,7 +57,7 @@ const partKind = {
 } as const;
 
 const selectClass =
-  "h-10 max-w-[320px] rounded-[10px] border-[1.5px] border-bd bg-bg px-3 text-[15px] font-bold text-ink";
+  "h-10 max-w-[320px] rounded-[10px] border-[1.5px] border-bd bg-bg px-3 text-[15px] font-bold text-ink max-md:h-11 max-md:w-full max-md:max-w-none";
 
 
 type Choice = Options["days"][number]["assignments"][number] & { day: Options["days"][number] };
@@ -92,8 +93,10 @@ export function ReviewScreen({ assignmentId, studentId }: { assignmentId?: strin
 
   return (
     <main className="flex flex-col pb-10">
-      <div className="flex flex-wrap items-end gap-3 px-7 pt-4">
-        <h1 className="m-0 text-[46px] leading-[1.04] font-extrabold tracking-[-.035em]">Review</h1>
+      <div className="flex flex-wrap items-end gap-x-3 gap-y-2 px-4 pt-4 md:px-7">
+        <h1 className="m-0 text-[34px] leading-[1.04] font-extrabold tracking-[-.035em] md:text-[46px]">
+          Review
+        </h1>
         {current && (
           <>
             <select
@@ -132,14 +135,14 @@ export function ReviewScreen({ assignmentId, studentId }: { assignmentId?: strin
           </>
         )}
         {queue && (
-          <span className="mb-2.5 ml-auto text-sm font-semibold text-ink2">
+          <span className="mb-2.5 text-sm font-semibold text-ink2 md:ml-auto">
             {queue.waiting} waiting for review
           </span>
         )}
       </div>
 
       {current === null ? (
-        <EmptyState title="Nothing to review yet" className="mx-7 mt-6">
+        <EmptyState title="Nothing to review yet" className="mx-4 mt-6 md:mx-7">
           {options.curriculum
             ? "This class has no published assignments."
             : "This group has no curriculum yet."}
@@ -147,11 +150,11 @@ export function ReviewScreen({ assignmentId, studentId }: { assignmentId?: strin
       ) : queue === undefined ? (
         <LoadingState label="Loading submissions…" />
       ) : queue === null ? (
-        <EmptyState title="This assignment wasn’t found" className="mx-7 mt-6">
+        <EmptyState title="This assignment wasn’t found" className="mx-4 mt-6 md:mx-7">
           Pick another day or assignment.
         </EmptyState>
       ) : queue.rows.length === 0 ? (
-        <EmptyState title="No students yet" className="mx-7 mt-6">
+        <EmptyState title="No students yet" className="mx-4 mt-6 md:mx-7">
           Nobody in {options.curriculum?.name ?? "this curriculum"} has this assignment yet.
         </EmptyState>
       ) : (
@@ -166,6 +169,8 @@ function ReviewBody({ queue, timeZone, now, initialStudentId }: { queue: Queue; 
   const [selection, setSelection] = useState<{ studentId: Id<"students">; attempt: number | null }>(
     () => ({ studentId: (queue.rows.find(row => row.studentId === initialStudentId) ?? queue.rows[0]!).studentId, attempt: null }),
   );
+  // Phones show the queue alone; picking a student opens their attempt as a sheet.
+  const [detailOpen, setDetailOpen] = useState(!!initialStudentId);
   const rows = queue.rows;
   const row = rows.find((r) => r.studentId === selection.studentId) ?? rows[0]!;
   const detail = useQuery(api.review.attempt, {
@@ -174,8 +179,10 @@ function ReviewBody({ queue, timeZone, now, initialStudentId }: { queue: Queue; 
     attempt: selection.studentId === row.studentId ? (selection.attempt ?? undefined) : undefined,
   });
 
-  const select = (studentId: Id<"students">, attempt: number | null = null) =>
+  const select = (studentId: Id<"students">, attempt: number | null = null) => {
     setSelection({ studentId, attempt });
+    setDetailOpen(true);
+  };
 
   const rowSummary = (r: QueueRow) => {
     if (r.attempt === null || r.submittedAt === null) {
@@ -193,7 +200,7 @@ function ReviewBody({ queue, timeZone, now, initialStudentId }: { queue: Queue; 
   };
 
   return (
-    <div className="grid gap-4 px-7 pt-3.5 xl:grid-cols-[272px_minmax(0,1fr)_372px]">
+    <div className="grid gap-4 px-4 pt-3.5 md:px-7 xl:grid-cols-[272px_minmax(0,1fr)_372px]">
       <nav aria-label="Submissions" className="flex flex-col gap-0.5 self-start rounded-[20px] bg-sf p-2">
         {rows.map((r) => {
           const current = r.studentId === row.studentId;
@@ -223,6 +230,7 @@ function ReviewBody({ queue, timeZone, now, initialStudentId }: { queue: Queue; 
         })}
       </nav>
 
+      <PhoneSheet open={detailOpen} onClose={() => setDetailOpen(false)} title={row.name} backLabel="Review queue">
       {detail === undefined ? (
         <div className="xl:col-span-2">
           <LoadingState label="Loading attempt…" />
@@ -237,8 +245,8 @@ function ReviewBody({ queue, timeZone, now, initialStudentId }: { queue: Queue; 
             key={`${detail.student._id}:${detail.selected?._id ?? "none"}`}
             detail={detail}
             queue={queue}
-            timeZone={timeZone}
             now={now}
+            timeZone={timeZone}
             onAttempt={(attempt) => select(row.studentId, attempt)}
           />
           <ReviewPanel
@@ -246,11 +254,11 @@ function ReviewBody({ queue, timeZone, now, initialStudentId }: { queue: Queue; 
             detail={detail}
             guided={queue.assignment.type === "guided"}
             timeZone={timeZone}
-            now={now}
             onAttempt={(attempt) => select(row.studentId, attempt)}
           />
         </>
       )}
+      </PhoneSheet>
     </div>
   );
 }
@@ -305,7 +313,7 @@ function Snapshot({
         <>
           <SegmentedControl
             label="Attempts"
-            className="self-start bg-sf [&>button]:h-8"
+            className="max-w-full flex-wrap self-start bg-sf [&>button]:h-8 max-md:[&>button]:h-11"
             options={detail.attempts.map((a) => ({
               value: String(a.attempt),
               label: `Attempt ${a.attempt} · ${attemptWord[a.status]}`,
@@ -387,7 +395,7 @@ function OutputCompare({ selected }: { selected: Selected }) {
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid gap-2.5 sm:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-1.5 rounded-2xl bg-sf px-3.5 py-3">
           <b className="text-[13px] font-bold">Expected</b>
           {expected !== null ? (
@@ -435,13 +443,11 @@ function ReviewPanel({
   detail,
   guided,
   timeZone,
-  now,
   onAttempt,
 }: {
   detail: Detail;
   guided: boolean;
   timeZone: string;
-  now: number;
   onAttempt: (attempt: number) => void;
 }) {
   const { selected, student } = detail;
@@ -454,18 +460,10 @@ function ReviewPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const closesAt = detail.turnInClosesAt;
-  const closeLine =
-    closesAt === null
-      ? "Not scheduled, so turn-in has no close. Reviewing doesn’t change that."
-      : `Turn-in ${closesAt > now ? "closes" : "closed"} ${formatWeekdayDate(closesAt, timeZone)}. Reviewing doesn’t extend it.`;
-
-
   if (selected === null) {
     return (
       <aside aria-label="Check and review" className="flex flex-col gap-3 self-start rounded-[24px] bg-sf px-[18px] py-4">
         <span className="text-sm text-ink2">Nothing to review until {student.firstName} turns this in.</span>
-        <span className="text-xs text-ink3">{closeLine}</span>
       </aside>
     );
   }
@@ -582,7 +580,7 @@ function ReviewPanel({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="self-start"
+                  className="self-start max-md:h-10"
                   onClick={() => {
                     setFeedbackOpen(false);
                     setFeedback("");
@@ -616,7 +614,7 @@ function ReviewPanel({
               <Button
                 variant="ghost"
                 size="sm"
-                className="self-start"
+                className="self-start max-md:h-10"
                 onClick={() => {
                   setNoteOpen(false);
                   setNote("");
@@ -664,7 +662,6 @@ function ReviewPanel({
           </>
         )}
       </div>
-      <span className="text-xs text-ink3">{closeLine}</span>
     </aside>
   );
 }

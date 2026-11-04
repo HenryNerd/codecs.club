@@ -65,8 +65,7 @@ function DayCard({ day, state, timeZone }: { day: TrackDay; state: DayState; tim
     case "open":
       footer = (
         <span className="text-[13px] font-bold text-amb-i">
-          ◐ {state.turnedIn} of {state.total}
-          {state.closesTonight ? " · closes tonight" : state.closed ? " · closed" : ""}
+          ◐ {state.turnedIn} of {state.total} turned in
         </span>
       );
       break;

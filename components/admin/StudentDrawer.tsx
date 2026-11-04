@@ -145,7 +145,7 @@ export function StudentDrawer({
         <label htmlFor="student-login-code" className="text-sm font-bold">
           Login code
         </label>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <TextInput
             id="student-login-code"
             mono
@@ -195,7 +195,7 @@ export function StudentDrawer({
 
       {error && <FieldError id="student-drawer-error">{error}</FieldError>}
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 max-md:[&>button]:h-11">
         <Button
           variant="primary"
           className="h-[42px] px-[18px]"
@@ -223,9 +223,8 @@ export function StudentDrawer({
             const awaitingReview = day.assignments.some(assignment => assignment.turnedIn && !assignment.reviewed);
             const incomplete = day.assignments.some(assignment => assignment.reviewed && assignment.reviewDecision === "needsWork");
             const complete = !incomplete && day.assignments.length > 0 && turnedIn === day.assignments.length && !awaitingReview;
-            const overdue = day.turnInClosesAt !== null && day.turnInClosesAt < now && !complete;
             const started = day.assignments.some(assignment => assignment.started);
-            const colors = incomplete ? "bg-cor-s text-cor-i" : awaitingReview ? "bg-amb-s text-amb-i" : complete ? "bg-mint-s text-mint-i" : overdue && day.assignments.length > 0 ? "bg-cor-s text-cor-i" : started ? "bg-amb-s text-amb-i" : "bg-bg text-ink3";
+            const colors = incomplete ? "bg-cor-s text-cor-i" : awaitingReview ? "bg-amb-s text-amb-i" : complete ? "bg-mint-s text-mint-i" : started ? "bg-amb-s text-amb-i" : "bg-bg text-ink3";
             const reviewAssignment = day.assignments.find(assignment => assignment.turnedIn && !assignment.reviewed);
             return <article key={day._id} className={`relative flex min-w-0 flex-col gap-1 rounded-2xl p-3 ${colors}`}>
               {reviewAssignment && <Link href={`/admin/review?assignmentId=${reviewAssignment._id}&studentId=${student._id}`} aria-label={`Review Day ${day.order}: ${day.topic} for ${name}`} className="absolute inset-0 z-10 rounded-2xl transition-colors hover:bg-amb/10 focus-visible:bg-amb/10 focus-visible:outline-2 focus-visible:outline-amb" />}

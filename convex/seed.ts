@@ -4,26 +4,31 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, type MutationCtx } from "./_generated/server";
 import { appError } from "./lib/errors";
 import { allocateLoginCode } from "./lib/loginCodes";
-import { turnInCloseFor, zonedTimeToUtc } from "./lib/time";
+import { zonedTimeToUtc } from "./lib/time";
 
 /**
  * Loads the sample school from the CodeCS design into an EMPTY development
- * deployment: curricula, days, the 2026–27 schedule, assignments, a basic
- * roster with seats, sample work for Jordan Smith, a review queue and help
- * requests. Create an admin first (admins:createAdmin); it authors feedback.
+ * deployment: curricula (Python Fundamentals is the 6-week basic program, one
+ * lesson a week), days, the 2026–27 schedule, assignments, a basic roster,
+ * sample work for Jordan Smith, a review queue and help requests. Create an
+ * admin first (admins:createAdmin); it authors feedback.
  *
  *   npx convex run seed:run
  *
- * Never run this against production.
+ * A deployment seeded before October 28, 2026 can be brought up to date with
+ * `seed:applyCorrections` instead. Never run either against production.
  */
 
 const TIME_ZONE = "America/Los_Angeles";
 const SETTINGS = {
   currentYear: "2026-27",
-  turnInDays: 14,
-  closeTime: "23:59",
   timeZone: TIME_ZONE,
 };
+
+/** The basic program runs 6 weeks: one lesson, and one day, a week. */
+const PROGRAM_DAYS = 6;
+/** Day 6 used to be "Lists"; Functions folded into it when the program became 6 weeks. */
+const LAST_DAY_TOPIC = "Lists and functions";
 
 /** Wall-clock Pacific time to UTC ms. */
 function pt(year: number, month: number, day: number, hour = 16, minute = 0): number {
@@ -220,7 +225,7 @@ const FUNDAMENTALS: DaySeed[] = [
     ],
   },
   {
-    topic: "Lists",
+    topic: LAST_DAY_TOPIC,
     date: [2026, 10, 22],
     assignments: [
       {
@@ -233,8 +238,6 @@ const FUNDAMENTALS: DaySeed[] = [
       },
     ],
   },
-  { topic: "Functions", assignments: [] },
-  { topic: "Final project", assignments: [] },
 ];
 
 const ADVANCED: DaySeed[] = [
@@ -244,8 +247,8 @@ const ADVANCED: DaySeed[] = [
   { topic: "Files and JSON", assignments: [] },
 ];
 
-/** Basic roster from the design, in seating-chart order; null = empty desk. */
-const BASIC_ROSTER: Array<[first: string, last: string, sinceYear?: string] | null> = [
+/** Basic roster from the design. Order decides login codes (Jordan is jsmith, Jamie jsmith1). */
+const BASIC_ROSTER: Array<[first: string, last: string, sinceYear?: string]> = [
   ["Ava", "Chen"],
   ["Jordan", "Smith", "2025-26"],
   ["Jamie", "Smith", "2025-26"],
@@ -256,7 +259,6 @@ const BASIC_ROSTER: Array<[first: string, last: string, sinceYear?: string] | nu
   ["Liam", "O’Brien"],
   ["Noah", "Kim"],
   ["Emma", "Davis"],
-  null,
   ["Mateo", "Rossi"],
   ["Zoe", "Williams"],
   ["Ethan", "Brooks"],
@@ -265,7 +267,6 @@ const BASIC_ROSTER: Array<[first: string, last: string, sinceYear?: string] | nu
   ["Chloe", "Park"],
   ["Owen", "Clark"],
   ["Isla", "Moore"],
-  null,
   ["Ben", "Carter"],
   ["Grace", "Lee"],
   ["Leo", "Ramirez"],
@@ -296,7 +297,7 @@ export const run = internalMutation({
     if (admin === null) {
       throw appError("INVALID", "Create an admin first: npx convex run admins:createAdmin '{…}'");
     }
-    const teacher = admin.userId;
+    const author = admin.userId;
 
     await ctx.db.insert("settings", SETTINGS);
 
@@ -323,13 +324,7 @@ export const run = internalMutation({
         });
         dayIds.set(`${curriculumId}:${day.topic}`, dayId);
         if (day.date) {
-          const lessonAt = pt(...day.date);
-          await ctx.db.insert("lessonSchedules", {
-            dayId,
-            year,
-            lessonAt,
-            turnInClosesAt: turnInCloseFor(lessonAt, SETTINGS),
-          });
+          await ctx.db.insert("lessonSchedules", { dayId, year, lessonAt: pt(...day.date) });
         }
         for (const [order, a] of day.assignments.entries()) {
           const status = a.status ?? "published";
@@ -350,7 +345,7 @@ export const run = internalMutation({
             partialMin: a.partialMin ?? 0,
             loopCheck: a.loopCheck ?? false,
             checkInput: a.checkInput,
-            createdBy: teacher,
+            createdBy: author,
             createdAt: Date.now(),
           });
           await ctx.db.patch("assignments", assignmentId, {
@@ -384,7 +379,7 @@ export const run = internalMutation({
       "2025-26",
     );
 
-    // Students, in seating order so login codes match the design (jsmith, jsmith1).
+    // Students, in roster order so login codes match the design (jsmith, jsmith1).
     const studentIds = new Map<string, Id<"students">>();
     const addStudent = async (
       first: string,
@@ -392,7 +387,6 @@ export const run = internalMutation({
       group: "basic" | "advanced",
       curriculumId: Id<"curricula">,
       sinceYear: string,
-      seatIndex?: number,
     ) => {
       const userId = await ctx.db.insert("users", { name: `${first} ${last}`, role: "student" });
       const loginCode = await allocateLoginCode(ctx, first, last);
@@ -405,21 +399,18 @@ export const run = internalMutation({
         group,
         curriculumId,
         sinceYear,
-        seatIndex,
       });
       studentIds.set(`${first} ${last}`, id);
       return id;
     };
-    for (const [seat, entry] of BASIC_ROSTER.entries()) {
-      if (entry === null) continue;
-      const [first, last, since] = entry;
-      await addStudent(first, last, "basic", fundamentalsId, since ?? SETTINGS.currentYear, seat);
+    for (const [first, last, since] of BASIC_ROSTER) {
+      await addStudent(first, last, "basic", fundamentalsId, since ?? SETTINGS.currentYear);
     }
-    for (const [seat, [first, last]] of ADVANCED_ROSTER.entries()) {
-      await addStudent(first, last, "advanced", advanced, SETTINGS.currentYear, seat);
+    for (const [first, last] of ADVANCED_ROSTER) {
+      await addStudent(first, last, "advanced", advanced, SETTINGS.currentYear);
     }
 
-    const work = new WorkSeeder(ctx, teacher, assignmentIds, revisionIds);
+    const work = new WorkSeeder(ctx, author, assignmentIds, revisionIds);
     const jordan = studentIds.get("Jordan Smith")!;
 
     // Jordan: Days 1, 2 and 4 turned in, Day 3 partly, Day 5 in progress.
@@ -497,6 +488,85 @@ export const run = internalMutation({
   },
 });
 
+/**
+ * Brings a deployment seeded before October 28, 2026 up to date without
+ * reseeding: Python Fundamentals keeps Days 1–6 (Day 6 becomes "Lists and
+ * functions"), and the deprecated seat and turn-in window fields are cleared.
+ * Only days with no assignments and no lesson dates are removed, so no work
+ * is lost. Safe to run more than once.
+ *
+ *   npx convex run seed:applyCorrections
+ */
+export const applyCorrections = internalMutation({
+  args: {},
+  returns: v.array(v.string()),
+  handler: async (ctx) => {
+    const done: string[] = [];
+    const basic = await ctx.db
+      .query("curricula")
+      .withIndex("by_group", (q) => q.eq("group", "basic"))
+      .take(50);
+    const fundamentals = basic.find((c) => c.name === "Python Fundamentals");
+    if (fundamentals !== undefined) {
+      const extraDays = await ctx.db
+        .query("days")
+        .withIndex("by_curriculumId_and_order", (q) =>
+          q.eq("curriculumId", fundamentals._id).gt("order", PROGRAM_DAYS),
+        )
+        .take(50);
+      for (const day of extraDays) {
+        const assignment = await ctx.db
+          .query("assignments")
+          .withIndex("by_dayId_and_order", (q) => q.eq("dayId", day._id))
+          .first();
+        const schedule = await ctx.db
+          .query("lessonSchedules")
+          .withIndex("by_dayId_and_year", (q) => q.eq("dayId", day._id))
+          .first();
+        if (assignment !== null || schedule !== null) {
+          done.push(`Kept Day ${day.order}: ${day.topic}, which has assignments or lesson dates.`);
+          continue;
+        }
+        await ctx.db.delete("days", day._id);
+        done.push(`Removed empty Day ${day.order}: ${day.topic}.`);
+      }
+      const lastDay = await ctx.db
+        .query("days")
+        .withIndex("by_curriculumId_and_order", (q) =>
+          q.eq("curriculumId", fundamentals._id).eq("order", PROGRAM_DAYS),
+        )
+        .first();
+      if (lastDay?.topic === "Lists") {
+        await ctx.db.patch("days", lastDay._id, { topic: LAST_DAY_TOPIC });
+        done.push(`Renamed Day ${PROGRAM_DAYS} to “${LAST_DAY_TOPIC}”.`);
+      }
+    }
+
+    let seats = 0;
+    for await (const student of ctx.db.query("students")) {
+      if (student.seatIndex === undefined) continue;
+      await ctx.db.patch("students", student._id, { seatIndex: undefined });
+      seats++;
+    }
+    if (seats > 0) done.push(`Cleared ${seats} seats.`);
+
+    let closes = 0;
+    for await (const schedule of ctx.db.query("lessonSchedules")) {
+      if (schedule.turnInClosesAt === undefined) continue;
+      await ctx.db.patch("lessonSchedules", schedule._id, { turnInClosesAt: undefined });
+      closes++;
+    }
+    if (closes > 0) done.push(`Cleared ${closes} turn-in closes.`);
+
+    for await (const settings of ctx.db.query("settings")) {
+      if (settings.turnInDays === undefined && settings.closeTime === undefined) continue;
+      await ctx.db.patch("settings", settings._id, { turnInDays: undefined, closeTime: undefined });
+      done.push("Removed the turn-in window from settings.");
+    }
+    return done.length > 0 ? done : ["Already up to date."];
+  },
+});
+
 type WorkSeed = {
   code: string;
   version: number;
@@ -517,7 +587,7 @@ type WorkSeed = {
 class WorkSeeder {
   constructor(
     private ctx: MutationCtx,
-    private teacher: Id<"users">,
+    private author: Id<"users">,
     private assignments: Map<string, Id<"assignments">>,
     private revisions: Map<string, Id<"assignmentRevisions">>,
   ) {}
@@ -582,7 +652,7 @@ class WorkSeeder {
         submittedAt: attempt.at,
         checkResultId,
         status: reviewedAt ? "reviewed" : "unreviewed",
-        reviewedBy: reviewedAt ? this.teacher : undefined,
+        reviewedBy: reviewedAt ? this.author : undefined,
         reviewedAt,
         idempotencyKey: `seed-${workspaceId}-${index + 1}`,
       });
@@ -590,7 +660,7 @@ class WorkSeeder {
         await ctx.db.insert("feedback", {
           submissionId,
           studentId,
-          authorId: this.teacher,
+          authorId: this.author,
           body: attempt.feedback,
           visibility: "student",
           createdAt: reviewedAt ?? attempt.at,

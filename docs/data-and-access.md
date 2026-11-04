@@ -9,20 +9,20 @@ Convex is the required persistent backend. The conceptual records below map to t
 | Record | Responsibility | Table(s) |
 | --- | --- | --- |
 | Student | Persistent identity, name code, imported roster data, current group/curriculum | `students` (+ `users`) |
-| Admin | Username, credential hash/authentication records, and authorized teaching/management access | `admins` (+ `users`, Convex Auth tables) |
+| Admin | Username, display name (students see its first word, never a title), credential hash/authentication records, and authorized teaching/management access | `admins` (+ `users`, Convex Auth tables) |
 | Group | The two persistent values: basic and advanced | `"basic" \| "advanced"` field |
 | Curriculum / Day | Learning sequence, topics, cover image, slides link, assignment relationships | `curricula`, `days` |
-| Lesson Schedule | Year-specific lesson dates and associated turn-in timing | `lessonSchedules` |
-| App Settings | Admin-editable approved behavior, including turn-in timing configuration | `settings` |
+| Lesson Schedule | Year-specific lesson dates (turn-in never closes, so there is no turn-in timing) | `lessonSchedules` |
+| App Settings | Admin-editable approved behavior: current school year and school time zone | `settings` |
 | Assignment | Guided/open-ended task, publication state, named requirements, expected checks, and assignment-specific partial-completion rule where applicable | `assignments`, `assignmentRevisions` |
 | Student Work | Student files, autosave state, environment details, assignment and historical context | `workspaces`, `workFiles` |
 | Work Version | Recoverable prior files with creator/time context and why it was made (start, autosave, restore, check, …) | `workVersions` |
 | Submission | Final saved snapshot, submission time, assignment/schedule context | `submissions` |
 | Guided Check Result | Requirement-level outcomes and overall classification tied to the specific work version and evaluation-rule version, plus how the check run ended and the start of its output | `checkResults` |
-| Feedback | Teacher response tied to reviewed work (student-visible) | `feedback` (`visibility: "student"`) |
+| Feedback | An admin's response tied to reviewed work (student-visible) | `feedback` (`visibility: "student"`) |
 | Review Note | Admin-only note associated with student work or review | `feedback` (`visibility: "private"`) |
 | Help Request | Student, assignment, alert and resolution state | `helpRequests` |
-| Assistance / Guidance | Teacher participation and assignment-context messages | `assistSessions`, `guidanceNotes` |
+| Assistance / Guidance | Admin participation and assignment-context messages | `assistSessions`, `guidanceNotes` |
 | Attendance | Present/Late/Absent per student per lesson date | `attendance` |
 | Admin Change | Acting admin, timestamp, affected record, and relevant prior/new values | `adminChanges` |
 
@@ -32,7 +32,8 @@ Persistence requirements:
 - Current group/curriculum and historical assignment context are separate so reassignment cannot relabel old work.
 - New yearly schedules cannot overwrite old submissions, work versions, or dates.
 - Saved results must identify the code version checked; stale results must not imply that new edits have been evaluated.
-- Concurrent teacher/student edits and restores must converge without silent data loss.
+- Concurrent admin/student edits and restores must converge without silent data loss.
+- Fields that are no longer used stay in the schema as optional and are marked deprecated, because Convex refuses a schema that existing documents don't match: `lessonSchedules.turnInClosesAt`, `settings.turnInDays`, `settings.closeTime` (D13) and `students.seatIndex` (D14). `seed:applyCorrections` clears them on an older development deployment. The `workVersions.reason` literal `"teacher"` is kept as stored and means an edit made by an admin.
 - Completed work and former-student access persist for the website's lifetime.
 - Admin change history is required. A custom database/file backup feature or separate backup system is outside the approved scope.
 - Retain the approved name-code student login flow for this small-scale deployment; changing it to a password-based student flow is not required.

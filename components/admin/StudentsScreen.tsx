@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
+import { PhoneSheet } from "@/components/ui/PhoneSheet";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
@@ -64,13 +65,13 @@ export function StudentsScreen() {
 
   return (
     <main className="flex flex-col pb-10">
-      <div className="flex flex-wrap items-end gap-4 px-7 pt-4">
-        <h1 className="m-0 text-[46px] leading-[1.04] font-extrabold tracking-[-.035em]">Students</h1>
+      <div className="flex flex-wrap items-end gap-4 px-4 md:px-7 pt-4">
+        <h1 className="m-0 text-[34px] md:text-[46px] leading-[1.04] font-extrabold tracking-[-.035em]">Students</h1>
         <span className="pb-1.5 text-sm text-ink3">
           {roster.students.length} in {selectedClass?.name ?? group} ·
           {formatYear(roster.year)}
         </span>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
           <Button size="lg" onClick={() => { setAdding(true); setSelectedId(null); }}>Add student</Button>
           <Button variant="secondary" size="lg" disabled={!roster.students.length} onClick={() => setTickets({ students: roster.students, address: window.location.origin })}>
             Print tickets
@@ -117,7 +118,7 @@ export function StudentsScreen() {
 
       <div
         className={cn(
-          "grid gap-5 px-7 pt-3",
+          "grid gap-5 px-4 md:px-7 pt-3",
           selected && "lg:grid-cols-[minmax(0,1fr)_380px]",
         )}
       >
@@ -129,7 +130,7 @@ export function StudentsScreen() {
           <div role="table" aria-label={`${selectedClass?.name ?? group} roster`}>
             <div
               role="row"
-              className="grid h-[34px] grid-cols-[minmax(0,1fr)_118px_300px] items-center gap-3 border-b border-ln px-3.5 text-[13px] font-semibold text-ink3"
+              className="hidden md:grid h-[34px] grid-cols-[minmax(0,1fr)_118px_300px] items-center gap-3 border-b border-ln px-3.5 text-[13px] font-semibold text-ink3"
             >
               <span role="columnheader">Student</span>
               <span role="columnheader">Login code</span>
@@ -148,7 +149,7 @@ export function StudentsScreen() {
                   key={student._id}
                   aria-selected={isSelected}
                   className={cn(
-                    "grid h-12 grid-cols-[minmax(0,1fr)_118px_300px] items-center gap-3 border-b border-ln px-3.5",
+                    "grid grid-cols-[minmax(0,1fr)_auto] py-2 md:py-0 md:h-12 md:grid-cols-[minmax(0,1fr)_118px_300px] items-center gap-3 border-b border-ln px-3.5",
                     isSelected ? "bg-mint-s" : "hover:bg-sf",
                   )}
                 >
@@ -165,7 +166,7 @@ export function StudentsScreen() {
                   <span role="cell" className="font-mono text-sm font-medium">
                     {student.loginCode}
                   </span>
-                  <span role="cell" className="flex items-center gap-2">
+                  <span role="cell" className="col-span-2 md:col-span-1 flex flex-wrap items-center gap-2">
                     {lesson ? (
                       <>
                         <AttendanceControl
@@ -191,6 +192,7 @@ export function StudentsScreen() {
           </div>
         )}
         {selected && (
+          <PhoneSheet open onClose={() => setSelectedId(null)} title={`${selected.firstName} ${selected.lastName}`} backLabel="Students">
           <StudentDrawer
             key={selected._id}
             student={selected}
@@ -202,6 +204,7 @@ export function StudentsScreen() {
             }}
             onClose={() => setSelectedId(null)}
           />
+          </PhoneSheet>
         )}
       </div>
     </main>

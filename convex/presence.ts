@@ -1,3 +1,4 @@
+import { firstName } from "./lib/adminNames";
 import { Presence } from "@convex-dev/presence";
 import { v } from "convex/values";
 import { components, internal } from "./_generated/api";
@@ -31,7 +32,7 @@ export const heartbeat = mutation({
       tokens.push(heartbeat.sessionToken);
       const registered = await ctx.db.query("workspacePresence").withIndex("by_workspaceId", q => q.eq("workspaceId", args.workspaceId!)).unique();
       if (!registered) await ctx.db.insert("workspacePresence", { workspaceId: args.workspaceId, token: heartbeat.roomToken });
-      await roomPresence.updateRoomUser(ctx, room, userId, { name: workspaceAccess.admin?.displayName ?? `${student.firstName} ${student.lastName}`, role: workspaceAccess.admin ? "teacher" : "student", file: args.file ?? null, anchor: args.anchor ?? null, head: args.head ?? null });
+      await roomPresence.updateRoomUser(ctx, room, userId, { name: workspaceAccess.admin ? firstName(workspaceAccess.admin.displayName) : `${student.firstName} ${student.lastName}`, role: workspaceAccess.admin ? "teacher" : "student", file: args.file ?? null, anchor: args.anchor ?? null, head: args.head ?? null });
       if (workspaceAccess.admin) {
         const session = await ctx.db.query("assistSessions").withIndex("by_workspaceId_and_adminId_and_leftAt", q => q.eq("workspaceId", args.workspaceId!).eq("adminId", userId).eq("leftAt", undefined)).first();
         if (session && (session.expiresAt ?? 0) - Date.now() < 30_000) {

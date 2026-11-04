@@ -1,4 +1,4 @@
-# Python Workspace and Teacher Assistance
+# Python Workspace and Assistance
 
 [Documentation index](README.md). Browser execution is prioritized. As of October 15, 2026 the workspace runs Python with **Pyodide 314.0.7** in a Web Worker (see [roadmap Phase 4](roadmap.md#phase-4--python-runtime-built)); it has not yet been verified on a school Chromebook or school network.
 
@@ -31,7 +31,7 @@
 - Provide runtime-loading, ready, running, stopped, and unavailable states, with useful errors for blocked runtime/package requests.
 - Test cold startup, repeated runs, stop behavior, file tools, package loading, and assistance on an actual school Chromebook and its school network before declaring the approach suitable.
 - Package compatibility must be validated against the curriculum. Browser installation support must not be described as unrestricted desktop pip compatibility.
-- Teacher-initiated runs must still work with browser execution. For a connected student, execution commands and output must reach the appropriate shared workspace. Do not silently require a student's closed browser to execute code; teacher-side execution of saved work needs a defined runtime path during implementation.
+- Admin-initiated runs must still work with browser execution. For a connected student, execution commands and output must reach the appropriate shared workspace. Do not silently require a student's closed browser to execute code; admin-side execution of saved work needs a defined runtime path during implementation.
 
 Pyodide is integrated (Phase 4): execution in a module Web Worker, package installation through micropip, Stop through the interrupt buffer with a worker-restart fallback, and input() through shared memory. The core runtime is served from the app’s own origin; optional packages come from the matching jsDelivr release, so school networks must allow `cdn.jsdelivr.net` (and PyPI for micropip) for anything beyond the standard library. Device/network tests (V02) still decide whether this is suitable.
 
@@ -41,13 +41,14 @@ Output matching is sufficient for the intended middle-school exercises; checking
 
 ## Assistance contract
 
-- A teacher joins directly with notification, without waiting for student acceptance.
-- Teacher/student edits are simultaneous, with labeled teacher cursors and visible connection state.
+- An admin joins directly with notification (“Max joined”: the admin's first name, never a title), without waiting for student acceptance.
+- Admin/student edits are simultaneous, with labeled admin cursors and visible connection state.
+- There is no assigned seating (D14). The Assistance screen shows the help queue (student names, longest wait first), online/idle/offline counts, the class listed by last name, and the selected student's live copy; on a phone the selected student opens as a full-screen sheet.
 - View, edit, Run, and guidance are available from the admin dashboard; the Help action alerts admins with student/assignment context.
 - Distinguish code synchronization, save acknowledgment, presence, and execution state. Stale presence must not imply live assistance.
 - Reconnects/restores must reconcile work rather than silently overwrite newer edits. Ending assistance preserves work and guidance.
 - Remote Run identifies the executed code version and initiating admin. Late output must not look like output for newer code.
-- A student's closed browser cannot execute commands. Teacher-side execution of saved work is a possible implementation path, but routing and shared output still require validation; shared files do not automatically imply shared runtime memory.
+- A student's closed browser cannot execute commands. Admin-side execution of saved work is a possible implementation path, but routing and shared output still require validation; shared files do not automatically imply shared runtime memory.
 
 ## Stop and technical references
 

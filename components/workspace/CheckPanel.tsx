@@ -70,7 +70,7 @@ export function CheckPanel({
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto px-4 pt-0.5 pb-3">
         {!guided ? (
           <p className="m-0 text-sm text-ink3">
-            Open-ended: there’s no automatic check. Your teacher reviews your work.
+            Open-ended: there’s no automatic check. It’s reviewed after you turn it in.
           </p>
         ) : (
           <>

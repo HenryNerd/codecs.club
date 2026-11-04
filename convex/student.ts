@@ -1,3 +1,4 @@
+import { adminFirstName } from "./lib/adminNames";
 import { classYear, classFor } from "./lib/classes";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -26,7 +27,6 @@ export const dayValidator = v.object({
   order: v.number(),
   topic: v.string(),
   lessonAt: v.union(v.number(), v.null()),
-  turnInClosesAt: v.union(v.number(), v.null()),
   assignments: v.array(assignmentSummaryValidator),
 });
 
@@ -134,7 +134,6 @@ export const home = query({
         order: day.order,
         topic: day.topic,
         lessonAt: schedule?.lessonAt ?? null,
-        turnInClosesAt: schedule?.turnInClosesAt ?? null,
         assignments: await assignmentSummaries(ctx, student, day._id),
       });
     }
@@ -152,13 +151,9 @@ export const home = query({
       const assignment = submission
         ? await ctx.db.get("assignments", submission.assignmentId)
         : null;
-      const author = await ctx.db
-        .query("admins")
-        .withIndex("by_userId", (q) => q.eq("userId", feedback.authorId))
-        .unique();
       latestFeedback = {
         assignmentTitle: assignment?.title ?? "Assignment",
-        authorName: author?.displayName ?? "Your teacher",
+        authorName: await adminFirstName(ctx, feedback.authorId),
         body: feedback.body,
         createdAt: feedback.createdAt,
       };
@@ -197,7 +192,6 @@ export const day = query({
         slidesUrl: v.union(v.string(), v.null()),
         coverUrl: v.union(v.string(), v.null()),
         lessonAt: v.union(v.number(), v.null()),
-        turnInClosesAt: v.union(v.number(), v.null()),
       }),
       assignments: v.array(assignmentSummaryValidator),
     }),
@@ -225,7 +219,6 @@ export const day = query({
         slidesUrl: dayDoc.slidesUrl ?? null,
         coverUrl: dayDoc.coverImageId ? await ctx.storage.getUrl(dayDoc.coverImageId) : null,
         lessonAt: schedule?.lessonAt ?? null,
-        turnInClosesAt: schedule?.turnInClosesAt ?? null,
       },
       assignments: await assignmentSummaries(ctx, student, dayDoc._id),
     };

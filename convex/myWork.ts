@@ -1,3 +1,4 @@
+import { firstName } from "./lib/adminNames";
 import { classYear, classFor } from "./lib/classes";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
@@ -9,7 +10,7 @@ const row = v.object({
   _id: v.id("workspaces"), assignmentId: v.id("assignments"), title: v.string(), type: assignmentTypeValidator,
   dayOrder: v.number(), topic: v.string(), year: v.string(), group: groupValidator,
   curriculumId: v.id("curricula"), curriculumName: v.string(), current: v.boolean(), timeZone: v.string(),
-  updatedAt: v.number(), turnInClosesAt: v.union(v.number(), v.null()),
+  updatedAt: v.number(),
   latestAttempt: v.union(v.null(), v.object({ attempt: v.number(), status: submissionStatusValidator, reviewDecision: v.optional(reviewDecisionValidator), reviewedAt: v.union(v.number(), v.null()) })),
 });
 
@@ -25,12 +26,11 @@ export const list = query({
       const assignment = await ctx.db.get("assignments", workspace.assignmentId);
       const day = assignment ? await ctx.db.get("days", assignment.dayId) : null;
       const curriculum = await ctx.db.get("curricula", workspace.curriculumId);
-      const schedule = day ? await ctx.db.query("lessonSchedules").withIndex("by_dayId_and_year", q => q.eq("dayId", day._id).eq("year", workspace.year)).unique() : null;
       const latest = await ctx.db.query("submissions").withIndex("by_workspaceId_and_attempt", q => q.eq("workspaceId", workspace._id)).order("desc").first();
       return { _id: workspace._id, assignmentId: workspace.assignmentId, title: assignment?.title ?? "Saved assignment", type: assignment?.type ?? "open" as const,
         dayOrder: day?.order ?? 0, topic: day?.topic ?? "Past lesson", year: workspace.year, group: workspace.group, curriculumId: workspace.curriculumId,
         curriculumName: curriculum?.name ?? "Previous curriculum", current: classroom?.status !== "archived" && workspace.year === await classYear(ctx, student.group) && workspace.curriculumId === student.curriculumId && workspace.group === student.group,
-        timeZone: settings.timeZone, updatedAt: workspace.updatedAt, turnInClosesAt: schedule?.turnInClosesAt ?? null,
+        timeZone: settings.timeZone, updatedAt: workspace.updatedAt,
         latestAttempt: latest ? { attempt: latest.attempt, status: latest.status, reviewDecision: latest.reviewDecision, reviewedAt: latest.reviewedAt ?? null } : null };
     }));
     return { ...result, page };
@@ -55,10 +55,10 @@ export const attempts = query({
       const notes = await ctx.db.query("feedback").withIndex("by_submissionId", q => q.eq("submissionId", submission._id)).take(20);
       const feedback = await Promise.all(notes.filter(n => n.visibility === "student").map(async note => {
         const author = await ctx.db.query("admins").withIndex("by_userId", q => q.eq("userId", note.authorId)).unique();
-        return { body: note.body, author: author?.displayName ?? "Your teacher", createdAt: note.createdAt };
+        return { body: note.body, author: firstName(author?.displayName ?? "CodeCS"), createdAt: note.createdAt };
       }));
       return { _id: submission._id, attempt: submission.attempt, submittedAt: submission.submittedAt, version: version?.number ?? 0, status: submission.status, reviewDecision: submission.reviewDecision,
-        outcome: check?.outcome ?? null, reviewedAt: submission.reviewedAt ?? null, reviewer: reviewer?.displayName ?? null, feedback };
+        outcome: check?.outcome ?? null, reviewedAt: submission.reviewedAt ?? null, reviewer: reviewer ? firstName(reviewer.displayName) : null, feedback };
     }));
     return { ...result, page };
   },

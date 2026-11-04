@@ -290,7 +290,7 @@ export async function installPackage(
 /** Turns micropip failures into messages a student can act on. */
 export function explainInstallError(name: string, raw: string): string {
   if (/pure Python 3 wheel|wasm32|emscripten|binary wheel/i.test(raw)) {
-    return `${name} can’t be installed in the browser: it needs compiled code that isn’t available here. Ask your teacher for another way.`;
+    return `${name} can’t be installed in the browser: it needs compiled code that isn’t available here. Ask for help to find another way.`;
   }
   if (/No known package|Can't fetch metadata|404|not found on PyPI|no matching distribution/i.test(raw)) {
     return `Couldn’t find a package named “${name}”. Check the spelling.`;

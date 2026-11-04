@@ -10,7 +10,6 @@ import { Pill } from "@/components/ui/Pill";
 import { EmptyState, LoadingState } from "@/components/ui/States";
 import { cn } from "@/lib/cn";
 import { formatWeekdayDateTime, formatYear } from "@/lib/format";
-import { useNow } from "@/lib/useNow";
 
 type Work = typeof api.myWork.list._returnType.page[number];
 
@@ -45,7 +44,6 @@ export function MyWork() {
 }
 
 function WorkDetail({ item }: { item: Work }) {
-  const now = useNow();
   const { results, status, loadMore } = usePaginatedQuery(api.myWork.attempts, { workspaceId: item._id }, { initialNumItems: 10 });
   const [submissionId, setSubmissionId] = useState<Id<"submissions"> | null>(null);
   const selected = results.find(a => a._id === submissionId);
@@ -53,12 +51,11 @@ function WorkDetail({ item }: { item: Work }) {
     <div className="text-sm text-ink3">{formatYear(item.year)} · {item.group} · {item.curriculumName}<br />Day {item.dayOrder}: {item.topic}</div>
     <h2 className="m-0 text-3xl font-extrabold">{item.title}</h2>
     <ButtonLink variant="primary" href={`/learn/assignments/${item.assignmentId}`}>Open working copy</ButtonLink>
-    <p className="m-0 text-sm text-ink3">{item.turnInClosesAt === null ? "No turn-in deadline scheduled." : `${item.turnInClosesAt <= now ? "Turn-in closed" : "Turn-in closes"} ${formatWeekdayDateTime(item.turnInClosesAt, item.timeZone)}.`} You can keep opening and editing your saved work.</p>
     <h3 className="m-0 text-lg font-bold">Submission history</h3>
     {status === "LoadingFirstPage" ? <LoadingState label="Loading attempts…" /> : results.length === 0 ? <p className="m-0 text-sm text-ink3">Not turned in yet. Your working copy is saved.</p> : <ol className="m-0 flex list-none flex-col gap-4 p-0">{results.map(a => <li key={a._id} className="rounded-2xl bg-bg p-4">
       {a.reviewDecision && <Pill tone={a.reviewDecision === "needsWork" ? "coral" : "mint"}>{a.reviewDecision === "needsWork" ? "Needs Work" : "Done"}</Pill>}
       <b>Attempt {a.attempt} · version {a.version}</b><div className="text-xs text-ink3">Turned in {formatWeekdayDateTime(a.submittedAt, item.timeZone)}</div>
-      <p className="my-2 text-sm">{a.status === "reviewed" ? `Reviewed by ${a.reviewer ?? "your teacher"}${a.reviewedAt ? ` · ${formatWeekdayDateTime(a.reviewedAt, item.timeZone)}` : ""}` : a.status === "superseded" ? "Superseded by a newer attempt" : "Waiting for review"}<br />Check: {a.outcome === "complete" ? "Completion" : a.outcome === "partial" ? "Partial completion" : a.outcome === "none" ? "No completion" : "Not checked"}</p>
+      <p className="my-2 text-sm">{a.status === "reviewed" ? `Reviewed by ${a.reviewer ?? "an admin"}${a.reviewedAt ? ` · ${formatWeekdayDateTime(a.reviewedAt, item.timeZone)}` : ""}` : a.status === "superseded" ? "Superseded by a newer attempt" : "Waiting for review"}<br />Check: {a.outcome === "complete" ? "Completion" : a.outcome === "partial" ? "Partial completion" : a.outcome === "none" ? "No completion" : "Not checked"}</p>
       {a.feedback.map((note, i) => <blockquote key={i} className="mx-0 rounded-xl bg-vio-s p-3 text-sm"><b className="block">Note from {note.author}</b><span className="whitespace-pre-wrap">{note.body}</span></blockquote>)}
       <Button size="sm" aria-pressed={submissionId === a._id} onClick={() => setSubmissionId(submissionId === a._id ? null : a._id)}>View attempt {a.attempt}</Button>
     </li>)}</ol>}

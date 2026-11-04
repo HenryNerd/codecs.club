@@ -4,7 +4,7 @@ import { mutation, query } from "./_generated/server";
 import { getSettings, requireAdmin } from "./lib/access";
 import { recordAdminChange } from "./lib/changes";
 import { appError } from "./lib/errors";
-import { zonedParts, parseClockTime, turnInCloseFor, zonedTimeToUtc } from "./lib/time";
+import { zonedParts, parseClockTime, zonedTimeToUtc } from "./lib/time";
 import { assignmentTypeValidator, groupValidator } from "./schema";
 
 const MAX_DAYS = 100;
@@ -20,8 +20,6 @@ export const overview = query({
     year: v.string(),
     currentYear: v.string(),
     timeZone: v.string(),
-    turnInDays: v.number(),
-    closeTime: v.string(),
     curricula: v.array(v.object({ _id: v.id("curricula"), name: v.string() })),
     curriculum: v.union(v.null(), v.object({ _id: v.id("curricula"), name: v.string() })),
     days: v.array(
@@ -37,7 +35,6 @@ export const overview = query({
             _id: v.id("lessonSchedules"),
             lessonAt: v.number(),
             endsAt: v.union(v.number(), v.null()),
-            turnInClosesAt: v.number(),
           }),
         ),
         assignments: v.array(
@@ -95,7 +92,6 @@ export const overview = query({
                 _id: schedule._id,
                 lessonAt: schedule.lessonAt,
                 endsAt: schedule.endsAt ?? null,
-                turnInClosesAt: schedule.turnInClosesAt,
               }
             : null,
           assignments: assignments.map((a) => ({
@@ -112,8 +108,6 @@ export const overview = query({
       year,
       currentYear: await classYear(ctx, args.group),
       timeZone: settings.timeZone,
-      turnInDays: settings.turnInDays,
-      closeTime: settings.closeTime,
       curricula: curricula.map((c) => ({ _id: c._id, name: c.name })),
       curriculum: curriculum ? { _id: curriculum._id, name: curriculum.name } : null,
       days,
@@ -122,8 +116,8 @@ export const overview = query({
 });
 
 /**
- * Sets a day's lesson date for one year. The turn-in close is derived from
- * settings, so moving a lesson moves its turn-in window (decision D06).
+ * Sets a day's lesson date for one year. Turn-in never closes, so this moves
+ * only the lesson date (decision D06).
  */
 export const setSchedule = mutation({
   args: {
@@ -135,7 +129,7 @@ export const setSchedule = mutation({
     time: v.string(),
     endTime: v.optional(v.string()),
   },
-  returns: v.object({ lessonAt: v.number(), turnInClosesAt: v.number() }),
+  returns: v.object({ lessonAt: v.number() }),
   handler: async (ctx, args) => {
     const { userId } = await requireAdmin(ctx);
     const settings = await getSettings(ctx);
@@ -164,20 +158,18 @@ export const setSchedule = mutation({
       settings.timeZone,
     );
     const endsAt = lessonEnd(lessonAt, args.endTime, settings.timeZone);
-    const turnInClosesAt = turnInCloseFor(lessonAt, settings);
     const existing = await ctx.db
       .query("lessonSchedules")
       .withIndex("by_dayId_and_year", (q) => q.eq("dayId", day._id).eq("year", args.year))
       .unique();
     if (existing) {
-      await ctx.db.patch("lessonSchedules", existing._id, { lessonAt, endsAt, turnInClosesAt });
+      await ctx.db.patch("lessonSchedules", existing._id, { lessonAt, endsAt });
     } else {
       await ctx.db.insert("lessonSchedules", {
         dayId: day._id,
         year: args.year,
         lessonAt,
         endsAt,
-        turnInClosesAt,
       });
     }
     await recordAdminChange(ctx, {
@@ -186,11 +178,11 @@ export const setSchedule = mutation({
       recordId: day._id,
       summary: `Scheduled Day ${day.order}: ${day.topic} for ${args.year}`,
       before: existing
-        ? { lessonAt: existing.lessonAt, endsAt: existing.endsAt, turnInClosesAt: existing.turnInClosesAt }
+        ? { lessonAt: existing.lessonAt, endsAt: existing.endsAt }
         : undefined,
-      after: { lessonAt, endsAt, turnInClosesAt },
+      after: { lessonAt, endsAt },
     });
-    return { lessonAt, turnInClosesAt };
+    return { lessonAt };
   },
 });
 
@@ -256,7 +248,7 @@ export const addLesson = mutation({
     if (existingDays.length >= MAX_DAYS) throw appError("INVALID", "A class supports up to 100 lessons.");
     const latest = await ctx.db.query("days").withIndex("by_curriculumId_and_order", q => q.eq("curriculumId", args.curriculumId)).order("desc").first();
     const dayId = await ctx.db.insert("days", { curriculumId: args.curriculumId, topic, order: (latest?.order ?? 0) + 1 });
-    const scheduleId = await ctx.db.insert("lessonSchedules", { dayId, year, lessonAt, endsAt, turnInClosesAt: turnInCloseFor(lessonAt, settings) });
+    const scheduleId = await ctx.db.insert("lessonSchedules", { dayId, year, lessonAt, endsAt });
     await recordAdminChange(ctx, { actorId: userId, table: "days", recordId: dayId, summary: `Added lesson: ${topic}`, after: { curriculumId: args.curriculumId, topic } });
     await recordAdminChange(ctx, { actorId: userId, table: "lessonSchedules", recordId: scheduleId, summary: `Scheduled ${topic}`, after: { dayId, year, lessonAt, endsAt } });
     return scheduleId;

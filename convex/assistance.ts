@@ -1,3 +1,4 @@
+import { firstName } from "./lib/adminNames";
 import { classYear, writableClass } from "./lib/classes";
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
@@ -66,7 +67,7 @@ export const detail = query({
     const notes = [];
     for (const note of noteRows) {
       const author = await ctx.db.query("admins").withIndex("by_userId", q => q.eq("userId", note.authorId)).unique();
-      notes.push({ id: note._id, body: note.body, name: author?.displayName ?? "Teacher", at: note.createdAt });
+      notes.push({ id: note._id, body: note.body, name: firstName(author?.displayName ?? "CodeCS"), at: note.createdAt });
     }
     const sessionRows = await ctx.db.query("assistSessions").withIndex("by_workspaceId_and_joinedAt", q => q.eq("workspaceId", workspace._id)).order("desc").take(50);
     const sessions = sessionRows.filter(s => s.leftAt === undefined && s.expiresAt !== undefined);
@@ -116,7 +117,7 @@ export const join = mutation({ args: { workspaceId: v.id("workspaces") }, return
   if (current) await endSession(ctx, current);
   const expiresAt = Date.now() + 60_000;
   const id = await ctx.db.insert("assistSessions", { workspaceId: args.workspaceId, adminId: userId, joinedAt: Date.now(), expiresAt });
-  await ctx.db.insert("assistEvents", { workspaceId: args.workspaceId, actorId: userId, name: admin.displayName, kind: "joined", at: Date.now() });
+  await ctx.db.insert("assistEvents", { workspaceId: args.workspaceId, actorId: userId, name: firstName(admin.displayName), kind: "joined", at: Date.now() });
   await recordAdminChange(ctx, { actorId: userId, table: "assistSessions", recordId: id, summary: `${admin.displayName} joined student work`, after: { workspaceId: args.workspaceId } });
   await ctx.scheduler.runAt(expiresAt, internal.assistance.expireSession, { id });
   return id;
@@ -127,7 +128,7 @@ async function endSession(ctx: MutationCtx, session: Doc<"assistSessions">) {
   if (session.leftAt !== undefined) return;
   await ctx.db.patch("assistSessions", session._id, { leftAt: Date.now() });
   const admin = await ctx.db.query("admins").withIndex("by_userId", q => q.eq("userId", session.adminId)).unique();
-  await ctx.db.insert("assistEvents", { workspaceId: session.workspaceId, actorId: session.adminId, name: admin?.displayName ?? "Teacher", kind: "left", at: Date.now() });
+  await ctx.db.insert("assistEvents", { workspaceId: session.workspaceId, actorId: session.adminId, name: firstName(admin?.displayName ?? "CodeCS"), kind: "left", at: Date.now() });
   await recordAdminChange(ctx, { actorId: session.adminId, table: "assistSessions", recordId: session._id, summary: `${admin?.displayName ?? "Teacher"} left student work`, after: { workspaceId: session.workspaceId, leftAt: Date.now() } });
 }
 export const expireSession = internalMutation({ args: { id: v.id("assistSessions") }, returns: v.null(), handler: async (ctx, args) => { const session = await ctx.db.get("assistSessions", args.id); if (session && (session.expiresAt ?? 0) <= Date.now()) await endSession(ctx, session); return null; } });

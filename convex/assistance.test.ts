@@ -8,10 +8,10 @@ afterEach(() => vi.useRealTimers());
 async function setup() {
   const t = setupConvex();
   const ids = await t.run(async ctx => {
-    const adminId = await ctx.db.insert("users", { role: "admin", name: "Teacher One" });
-    await ctx.db.insert("admins", { userId: adminId, username: "one", displayName: "Teacher One" });
-    const secondId = await ctx.db.insert("users", { role: "admin", name: "Teacher Two" });
-    await ctx.db.insert("admins", { userId: secondId, username: "two", displayName: "Teacher Two" });
+    const adminId = await ctx.db.insert("users", { role: "admin", name: "Max" });
+    await ctx.db.insert("admins", { userId: adminId, username: "one", displayName: "Max Rivera" });
+    const secondId = await ctx.db.insert("users", { role: "admin", name: "Sam Green" });
+    await ctx.db.insert("admins", { userId: secondId, username: "two", displayName: "Sam Green" });
     const userId = await ctx.db.insert("users", { role: "student", name: "Ada" });
     const otherUserId = await ctx.db.insert("users", { role: "student", name: "Grace" });
     await ctx.db.insert("settings", { currentYear: "2026-27", turnInDays: 14, closeTime: "23:59", timeZone: "America/Chicago" });
@@ -65,8 +65,8 @@ test("join, leave, expiry and guidance are visible to the student and persist wi
   expect(await admin.mutation(api.assistance.join, { workspaceId })).toBe(id);
   await admin.mutation(api.assistance.addNote, { workspaceId, body: "  Look at the loop condition.  " });
   let data = await student.query(api.assistance.detail, { workspaceId });
-  expect(data.events).toMatchObject([{ name: "Teacher One", kind: "joined" }]);
-  expect(data.notes).toMatchObject([{ body: "Look at the loop condition.", name: "Teacher One" }]);
+  expect(data.events).toMatchObject([{ name: "Max", kind: "joined" }]);
+  expect(data.notes).toMatchObject([{ body: "Look at the loop condition.", name: "Max" }]);
   await expect(student.mutation(api.assistance.addNote, { workspaceId, body: "no" })).rejects.toThrow(/Only admins/);
   vi.setSystemTime(Date.now() + 61_000);
   await t.mutation(internal.assistance.expireSession, { id });
@@ -100,7 +100,7 @@ test("presence aggregates tabs, protects identity and shows labeled workspace cu
   await expect(admin.mutation(api.presence.heartbeat, { sessionId: "teacher", workspaceId, active: true })).rejects.toThrow(/Join/);
   await admin.mutation(api.assistance.join, { workspaceId });
   await admin.mutation(api.presence.heartbeat, { sessionId: "teacher", workspaceId, active: true, file: "main.py", anchor: "{}", head: "{}" });
-  expect((await student.query(api.assistance.detail, { workspaceId })).cursors).toMatchObject(expect.arrayContaining([expect.objectContaining({ name: "Teacher One", role: "teacher", file: "main.py" })]));
+  expect((await student.query(api.assistance.detail, { workspaceId })).cursors).toMatchObject(expect.arrayContaining([expect.objectContaining({ name: "Max", role: "teacher", file: "main.py" })]));
   classroom = await admin.query(api.assistance.classroom, { group: "advanced" });
   expect(classroom.students).toEqual([]);
 });
@@ -143,7 +143,7 @@ test("remote runs pin saved files, identify the actor, refuse busy runs and isol
   await expect(student.mutation(api.remoteRuns.start, { workspaceId, entry: "main.py", key: "no" })).rejects.toThrow(/Only admins/);
   const input = { workspaceId, entry: "main.py", key: "run-one" };
   const first = await admin.mutation(api.remoteRuns.start, input);
-  expect(first.run.actorName).toBe("Teacher One");
+  expect(first.run.actorName).toBe("Max");
   expect((await admin.mutation(api.remoteRuns.start, input)).run._id).toBe(first.run._id);
   await expect(second.mutation(api.remoteRuns.start, { ...input, key: "run-two" })).rejects.toThrow(/already active/);
   await student.mutation(api.workspaces.saveFiles, { workspaceId, files: [{ name: "main.py", content: "print('later')", baseRevision: 1 }] });

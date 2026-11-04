@@ -17,13 +17,11 @@ import { usePythonRuntime } from "@/components/workspace/usePythonRuntime";
 import { errorMessage } from "@/lib/errors";
 import { chooseEntry } from "@/lib/python/runner";
 import { useNow } from "@/lib/useNow";
-import { ClassroomLayout } from "./ClassroomLayout";
+import { PhoneSheet } from "@/components/ui/PhoneSheet";
 import { useGroup } from "./GroupContext";
 
 export function AssistanceScreen() {
   const { group, selectedClass } = useGroup();
-  const [editingGroup, setEditingGroup] = useState<string | null>(null);
-  const editing = editingGroup === group;
   const classroom = useQuery(api.assistance.classroom, { group });
   const search = useSearchParams();
   const linked = search.get("workspace");
@@ -32,7 +30,7 @@ export function AssistanceScreen() {
   const [unworkedSelection, setUnworkedSelection] = useState<{ id: Id<"students">; group: string } | null>(null);
   useEffect(() => {
     const closeOutside = (event: MouseEvent) => {
-      if (event.target instanceof Element && !event.target.closest("[data-assistance-sidebar]")) {
+      if (event.target instanceof Element && !event.target.closest("[data-assistance-sidebar]") && !event.target.closest("[aria-label='Class list']")) {
         setChoice({ linked, id: null });
         setUnworkedSelection(null);
       }
@@ -59,12 +57,18 @@ export function AssistanceScreen() {
       <span className="inline-flex self-center items-center rounded-full bg-mint px-3 py-1 text-xs leading-none font-bold text-on-mint">● Live · {selectedClass?.name ?? group} · {classroom.year}</span>
 
     </div>
-    <div className={`grid items-start gap-4 ${editing ? "" : "lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]"}`}>
+    <div className={`grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]`}>
       <div className="flex min-w-0 flex-col gap-3">
-        <ClassroomLayout key={group} classroom={classroom} group={group} selected={selected} onPick={pick} selectedStudentId={unworked?.student._id} onPickStudent={person => { pick(person.workspaceId); if (!person.workspaceId) setUnworkedSelection({ id: person.student._id, group }); }} status={status} onEditingChange={value => setEditingGroup(value ? group : null)} />
+        <section aria-label="Class list" className="overflow-hidden rounded-2xl bg-sf">
+          <h2 className="p-4 text-xl font-bold">Students</h2>
+          {classroom.students.map(person => <button key={person.student._id} type="button" onClick={() => { pick(person.workspaceId); if (!person.workspaceId) setUnworkedSelection({ id: person.student._id, group }); }} className="flex min-h-16 w-full flex-wrap items-center gap-3 border-0 border-t border-ln bg-transparent p-4 text-left text-ink hover:bg-mint-s">
+            <span className="min-w-0 flex-1"><b className="block">{person.student.firstName} {person.student.lastName}</b><span className="text-xs text-ink3">{person.task ?? "No saved work yet"}</span></span>
+            <span className="text-xs font-semibold">{status(person.student.userId)}</span>
+          </button>)}
+        </section>
       </div>
-      {!editing && <div data-assistance-sidebar className="flex min-w-0 flex-col gap-4">
-        {selected || unworked ? <div className="flex min-h-[calc(100dvh-160px)] flex-col gap-3 rounded-[22px] bg-sf p-4"><Button size="sm" variant="ghost" className="self-start" onClick={() => pick(null)}>← Back to help queue</Button>{selected ? detail ? <AssistanceEditor key={selected} data={detail} onPick={pick} /> : <LoadingState label="Opening saved work…" /> : unworked && <div className="p-2"><h2 className="text-2xl font-extrabold">{unworked.student.firstName} {unworked.student.lastName}</h2><p className="mt-1 font-mono text-xs text-ink3">{unworked.student.loginCode}</p><p className="mt-4 text-sm text-ink3">No saved work yet. Their workspace will be available here once they start an assignment.</p></div>}</div> : <>
+      {<div data-assistance-sidebar className="flex min-w-0 flex-col gap-4">
+        {selected || unworked ? <PhoneSheet open onClose={() => pick(null)} title="Student work" backLabel="Classroom"><div className="flex min-h-[calc(100dvh-160px)] flex-col gap-3 rounded-[22px] bg-sf p-4"><Button size="sm" variant="ghost" className="self-start" onClick={() => pick(null)}>← Back to help queue</Button>{selected ? detail ? <AssistanceEditor key={selected} data={detail} onPick={pick} /> : <LoadingState label="Opening saved work…" /> : unworked && <div className="p-2"><h2 className="text-2xl font-extrabold">{unworked.student.firstName} {unworked.student.lastName}</h2><p className="mt-1 font-mono text-xs text-ink3">{unworked.student.loginCode}</p><p className="mt-4 text-sm text-ink3">No saved work yet. Their workspace will be available here once they start an assignment.</p></div>}</div></PhoneSheet> : <>
         <aside aria-label="Help queue" className="flex min-h-[calc(100dvh-160px)] flex-col gap-4 rounded-[22px] bg-sf p-5">
     <div className="grid grid-cols-2 gap-3" aria-label="Classroom overview">
       <section className="flex flex-col gap-1 rounded-2xl bg-mint-s px-4 py-4 text-mint-i">

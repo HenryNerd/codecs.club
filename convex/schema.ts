@@ -54,7 +54,11 @@ export default defineSchema({
     .index("email", ["email"])
     .index("phone", ["phone"]),
 
-  /** Website admin accounts (teachers). Distinct from Convex developer access. */
+  /**
+   * Website admin accounts: the high school students who run the club.
+   * Distinct from Convex developer access. Students see the first word of
+   * `displayName` ("Max"), never a title.
+   */
   admins: defineTable({
     userId: v.id("users"),
     username: v.string(),
@@ -79,7 +83,7 @@ export default defineSchema({
     curriculumId: v.id("curricula"),
     sinceYear: v.string(),
     avatarColor: v.optional(storedAvatarColorValidator),
-    /** Desk position on the assistance seating chart, per group. */
+    /** Deprecated: no assigned seating. Retained for stored documents. */
     seatIndex: v.optional(v.number()),
     deletedAt: v.optional(v.number()),
   })
@@ -125,13 +129,14 @@ export default defineSchema({
     slidesUrl: v.optional(v.string()),
   }).index("by_curriculumId_and_order", ["curriculumId", "order"]).index("by_curriculumId_and_importedFromDayId", ["curriculumId", "importedFromDayId"]),
 
-  /** Year-specific lesson date and the turn-in close derived from settings. */
+  /** Year-specific lesson date. Turn-in never closes, so this is only the lesson. */
   lessonSchedules: defineTable({
     dayId: v.id("days"),
     year: v.string(),
     lessonAt: v.number(),
     endsAt: v.optional(v.number()),
-    turnInClosesAt: v.number(),
+    /** Deprecated: turn-in never closes. */
+    turnInClosesAt: v.optional(v.number()),
   })
     .index("by_dayId_and_year", ["dayId", "year"])
     .index("by_year_and_lessonAt", ["year", "lessonAt"]),
@@ -139,9 +144,10 @@ export default defineSchema({
   /** Single document holding admin-editable behavior. */
   settings: defineTable({
     currentYear: v.string(),
-    turnInDays: v.number(),
-    /** Local wall-clock close time, "HH:MM". */
-    closeTime: v.string(),
+    /** Deprecated, unused: the old turn-in window length. Kept so stored documents validate. */
+    turnInDays: v.optional(v.number()),
+    /** Deprecated, unused: the old turn-in close time. Kept so stored documents validate. */
+    closeTime: v.optional(v.string()),
     timeZone: v.string(),
   }),
 
@@ -221,6 +227,7 @@ export default defineSchema({
       v.literal("start"),
       v.literal("autosave"),
       v.literal("restore"),
+      // Legacy stored literal for an edit made by an admin; renaming it needs a data migration.
       v.literal("teacher"),
       v.literal("submit"),
       v.literal("check"),
@@ -275,7 +282,7 @@ export default defineSchema({
     .index("by_status_and_submittedAt", ["status", "submittedAt"])
     .index("by_idempotencyKey", ["idempotencyKey"]),
 
-  /** Teacher writing on a submission: student-visible feedback or a private note. */
+  /** Admin writing on a submission: student-visible feedback or a private note. */
   feedback: defineTable({
     submissionId: v.id("submissions"),
     studentId: v.id("students"),

@@ -6,7 +6,7 @@ export type CodeCursor = {
   /** 1-based line the labeled cursor sits on. */
   line: number;
   label: string;
-  tone: "teacher" | "student";
+  tone: "admin" | "student";
 };
 
 /**
@@ -17,7 +17,7 @@ export function CodeView({
   code,
   cursors = [],
   highlightLines = [],
-  highlightTone = "teacher",
+  highlightTone = "admin",
   editorScheme = "dark",
   className,
   label,
@@ -25,8 +25,8 @@ export function CodeView({
   code: string;
   cursors?: CodeCursor[];
   highlightLines?: number[];
-  /** Teacher focus (violet) or a line that explains a failed check (coral). */
-  highlightTone?: "teacher" | "error";
+  /** Admin focus (violet) or a line that explains a failed check (coral). */
+  highlightTone?: "admin" | "error";
   editorScheme?: "dark" | "app";
   className?: string;
   label?: string;
@@ -92,17 +92,17 @@ function renderTokens(line: string): ReactNode {
 }
 
 function CursorFlag({ cursor }: { cursor: CodeCursor }) {
-  const teacher = cursor.tone === "teacher";
+  const admin = cursor.tone === "admin";
   return (
     <span className="relative ml-0.5 inline-block align-middle">
       <span
         aria-hidden="true"
-        className={cn("inline-block h-5 w-0.5 align-middle", teacher ? "bg-vio" : "bg-mint")}
+        className={cn("inline-block h-5 w-0.5 align-middle", admin ? "bg-vio" : "bg-mint")}
       />
       <span
         className={cn(
           "ml-1 rounded-md px-1.5 py-0.5 font-sans text-[11px] font-bold",
-          teacher ? "bg-vio text-on-vio" : "bg-mint text-on-mint",
+          admin ? "bg-vio text-on-vio" : "bg-mint text-on-mint",
         )}
       >
         {cursor.label}

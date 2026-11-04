@@ -160,7 +160,7 @@ test("student lessons and assignments follow the current class curriculum and sc
   const home = await student.query(api.student.home, {});
   expect(home).toMatchObject({ className: "Python", year: "2026-27", curriculum: { _id: latest } });
   expect(home.days).toHaveLength(1);
-  expect(home.days[0]).toMatchObject({ _id: schedule.dayId, lessonAt: schedule.lessonAt, turnInClosesAt: schedule.turnInClosesAt });
+  expect(home.days[0]).toMatchObject({ _id: schedule.dayId, lessonAt: schedule.lessonAt });
   expect(home.days[0].assignments[0]._id).toBe(published.assignmentId);
   expect(await student.query(api.student.day, { dayId: oldDay })).toBeNull();
   expect((await student.query(api.student.day, { dayId: schedule.dayId }))?.day.lessonAt).toBe(schedule.lessonAt);

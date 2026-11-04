@@ -367,7 +367,7 @@ export const studentProgress = query({
       ? await ctx.db.query("days").withIndex("by_curriculumId_and_order", q => q.eq("curriculumId", curriculum._id)).take(100) : [];
     const days = await Promise.all(lessons.map(async day => {
       const schedule = await ctx.db.query("lessonSchedules").withIndex("by_dayId_and_year", q => q.eq("dayId", day._id).eq("year", year)).unique();
-      return { _id: day._id, order: day.order, topic: day.topic, lessonAt: schedule?.lessonAt ?? null, turnInClosesAt: schedule?.turnInClosesAt ?? null, assignments: await assignmentSummaries(ctx, student, day._id) };
+      return { _id: day._id, order: day.order, topic: day.topic, lessonAt: schedule?.lessonAt ?? null, assignments: await assignmentSummaries(ctx, student, day._id) };
     }));
     return { className: classroom?.name ?? (student.group === "basic" ? "Basic" : "Advanced"), year, timeZone: settings.timeZone, days };
   },

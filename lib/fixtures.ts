@@ -11,9 +11,9 @@ export const FIXTURE_TIME_ZONE = "America/Los_Angeles";
 
 export type WorkStatus =
   | { kind: "inProgress"; savedAt: number }
-  | { kind: "notTurnedIn"; closesTonight: boolean }
+  | { kind: "notTurnedIn" }
   | { kind: "turnedIn" }
-  | { kind: "reviewed"; reviewedAt: number; hasNote: boolean; closed: boolean };
+  | { kind: "reviewed"; reviewedAt: number; hasNote: boolean };
 
 export type WorkItem = {
   id: string;
@@ -30,7 +30,6 @@ export type WorkItem = {
       check: "completion" | "partial completion" | "no completion" | null;
       review?: { by: string; at: number; note?: string };
     }>;
-    turnInClosedAt?: number;
   };
 };
 
@@ -58,7 +57,7 @@ export const myWorkFixture: WorkGroup[] = [
         id: "madlibs",
         title: "Mad libs",
         context: "Day 3 · Input and strings · guided",
-        status: { kind: "notTurnedIn", closesTonight: true },
+        status: { kind: "notTurnedIn" },
         assignmentId: null,
       },
       {
@@ -72,7 +71,7 @@ export const myWorkFixture: WorkGroup[] = [
         id: "nametag",
         title: "Name tag",
         context: "Day 2 · Variables · guided",
-        status: { kind: "reviewed", reviewedAt: pt("2026-09-28T16:00:00Z"), hasNote: true, closed: true },
+        status: { kind: "reviewed", reviewedAt: pt("2026-09-28T16:00:00Z"), hasNote: true },
         assignmentId: null,
         detail: {
           heading: "Day 2 · Variables · Python Fundamentals 2026–27",
@@ -83,20 +82,19 @@ export const myWorkFixture: WorkGroup[] = [
               version: 7,
               check: "completion",
               review: {
-                by: "Ms. Rivera",
+                by: "Max",
                 at: pt("2026-09-28T16:00:00Z"),
                 note: "Nice work! Try adding your favorite color too.",
               },
             },
           ],
-          turnInClosedAt: pt("2026-10-09T06:59:00Z"),
         },
       },
       {
         id: "hello",
         title: "Hello, world",
         context: "Day 1 · Hello, Python · guided",
-        status: { kind: "reviewed", reviewedAt: pt("2026-09-21T16:00:00Z"), hasNote: false, closed: true },
+        status: { kind: "reviewed", reviewedAt: pt("2026-09-21T16:00:00Z"), hasNote: false },
         assignmentId: null,
       },
     ],
@@ -110,7 +108,7 @@ export const myWorkFixture: WorkGroup[] = [
         id: "guessing",
         title: "Guessing game",
         context: "Final project · open-ended",
-        status: { kind: "reviewed", reviewedAt: pt("2026-05-22T16:00:00Z"), hasNote: false, closed: true },
+        status: { kind: "reviewed", reviewedAt: pt("2026-05-22T16:00:00Z"), hasNote: false },
         assignmentId: null,
       },
     ],
@@ -150,7 +148,7 @@ export const assignmentEditorFixture = {
 
 export type Presence = "online" | "idle" | "offline";
 
-export type SeatStudent = {
+export type LiveStudent = {
   loginCode: string;
   name: string;
   presence: Presence;
@@ -180,8 +178,8 @@ export const assistanceCodeFixture: Record<string, { code: string; cursorLine: n
   },
 };
 
-/** Seating chart in desk order: 6 desks per row (3 + aisle + 3); null = empty seat. */
-export const seatsFixture: Array<SeatStudent | null> = [
+/** Students in today's lesson. There is no assigned seating; the screen sorts by name. */
+export const classFixture: LiveStudent[] = [
   { loginCode: "achen", name: "Ava Chen", presence: "online", task: "Countdown", activity: "ran · no errors" },
   { loginCode: "jsmith", name: "Jordan Smith", presence: "online", task: "Countdown", activity: "editing", helpWaitMin: 3 },
   { loginCode: "jsmith1", name: "Jamie Smith", presence: "online", task: "Forever greeter", activity: "running…" },
@@ -192,7 +190,6 @@ export const seatsFixture: Array<SeatStudent | null> = [
   { loginCode: "lobrien", name: "Liam O’Brien", presence: "offline", task: "Loop art", activity: "signed out 4:20 pm" },
   { loginCode: "nkim", name: "Noah Kim", presence: "online", task: "Countdown", activity: "ran · no errors" },
   { loginCode: "edavis", name: "Emma Davis", presence: "online", task: "Forever greeter", activity: "editing" },
-  null,
   { loginCode: "mrossi", name: "Mateo Rossi", presence: "online", task: "Countdown", activity: "running…" },
   { loginCode: "zwilliams", name: "Zoe Williams", presence: "online", task: "Loop art", activity: "editing" },
   { loginCode: "ebrooks", name: "Ethan Brooks", presence: "idle", task: "Countdown", activity: "last edit 2 min ago" },
@@ -201,7 +198,6 @@ export const seatsFixture: Array<SeatStudent | null> = [
   { loginCode: "cpark", name: "Chloe Park", presence: "online", task: "Loop art", activity: "editing" },
   { loginCode: "oclark", name: "Owen Clark", presence: "online", task: "Countdown", activity: "editing" },
   { loginCode: "imoore", name: "Isla Moore", presence: "online", task: "Countdown", activity: "ran · no errors" },
-  null,
   { loginCode: "bcarter", name: "Ben Carter", presence: "online", task: "Forever greeter", activity: "running…" },
   { loginCode: "glee", name: "Grace Lee", presence: "offline", task: "Forever greeter", activity: "not signed in today" },
   { loginCode: "lramirez", name: "Leo Ramirez", presence: "online", task: "Loop art", activity: "editing" },

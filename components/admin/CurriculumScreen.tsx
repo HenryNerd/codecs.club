@@ -12,8 +12,8 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { errorMessage } from "@/lib/errors";
 import {
   dateKey,
+  formatNumericDate,
   formatTime,
-  formatWeekdayDateTime,
   formatYear,
   timeKey,
   timeZoneLabel,
@@ -49,8 +49,8 @@ export function CurriculumScreen() {
 
   return (
     <main className="flex flex-col pb-10">
-      <div className="flex flex-wrap items-end gap-3 px-7 pt-4">
-        <h1 className="m-0 text-[46px] leading-[1.04] font-extrabold tracking-[-.035em]">Curriculum</h1>
+      <div className="flex flex-wrap items-end gap-3 px-4 md:px-7 pt-4">
+        <h1 className="m-0 text-[34px] md:text-[46px] leading-[1.04] font-extrabold tracking-[-.035em]">Curriculum</h1>
         <span className="mb-[11px] ml-auto text-sm text-ink3">{formatYear(selectedClass?.year ?? data.year)}</span>
         <Button variant="primary" disabled={!data.curriculum} onClick={() => setAddingLesson(v => !v)}>Add lesson</Button>
         <Button disabled={!data.curriculum} onClick={() => setImportingLessons(v => !v)}>Import lessons</Button>
@@ -68,7 +68,7 @@ export function CurriculumScreen() {
         <>
           <section
             aria-label={`${formatYear(data.year)} schedule`}
-            className="mx-7 mt-3 grid overflow-hidden rounded-[22px] bg-sf lg:grid-cols-[minmax(0,1fr)_270px]"
+            className="mx-4 mt-3 grid overflow-hidden rounded-[22px] bg-sf md:mx-7 lg:grid-cols-[minmax(0,1fr)_270px]"
           >
             <div className="min-w-0">
               <YearTimeline
@@ -78,10 +78,6 @@ export function CurriculumScreen() {
                 selectedId={selected?._id ?? null}
                 onSelect={setSelectedDayId}
               />
-              <p className="m-0 px-5 pb-3 text-xs text-ink3">
-                Each bar runs from the lesson to its turn-in close ({data.turnInDays} days, set in
-                Settings).
-              </p>
             </div>
             <div className="flex flex-col gap-2 bg-sf2 px-[18px] py-4">
               <b className="text-[13px] font-bold">Not scheduled</b>
@@ -99,7 +95,7 @@ export function CurriculumScreen() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    className="h-[30px] rounded-lg"
+                    className="h-[30px] rounded-lg max-md:h-11"
                     onClick={() => {
                       setSelectedDayId(day._id);
                       requestAnimationFrame(() => document.getElementById("lesson-date")?.focus());
@@ -115,7 +111,25 @@ export function CurriculumScreen() {
 
           {selected && <DayActions key={selected._id} day={selected} />}
           {selected && (
-            <div className="grid gap-3.5 px-7 pt-3.5 lg:grid-cols-[1.1fr_1.2fr_1fr]">
+            <label className="mx-4 mt-3.5 flex flex-col gap-1.5 md:hidden">
+              <span className="text-sm font-bold">Day</span>
+              <select
+                className={"h-11 w-full rounded-xl border border-bd bg-bg px-3 text-sm"}
+                value={selected._id}
+                onChange={(event) => setSelectedDayId(event.target.value)}
+              >
+                {data.days.map((day) => (
+                  <option key={day._id} value={day._id}>
+                    Day {day.order}: {day.topic}
+                    {day.schedule ? ` · ${formatNumericDate(day.schedule.lessonAt, tz)}` : " · not scheduled"}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {selected && (
+            <div className="grid gap-3.5 px-4 pt-3.5 md:px-7 lg:grid-cols-[1.1fr_1.2fr_1fr]">
               <DayContentPanel key={`content-${selected._id}`} day={selected} />
               <DayAssignmentsPanel day={selected} />
               <DaySchedulePanel
@@ -278,8 +292,12 @@ function DayContentPanel({ day }: { day: OverviewDay }) {
 
 function DayAssignmentsPanel({ day }: { day: OverviewDay }) {
   return (
-    <section aria-label={`Day ${day.order} assignments`} className="flex flex-col gap-1.5 rounded-[22px] bg-sf px-[18px] py-4">
-      <div className="mb-1 flex items-center justify-between">
+    <section
+      aria-label={`Day ${day.order} assignments`}
+      // Phones show the assignments first: finding one is the usual reason to open this screen there.
+      className="flex flex-col gap-1.5 rounded-[22px] bg-sf px-[18px] py-4 max-lg:order-first max-md:px-3.5"
+    >
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <PanelLabel>DAY {day.order} · ASSIGNMENTS</PanelLabel>
         <ButtonLink href={`/admin/assignments?dayId=${day._id}`} size="sm" variant="secondary" className="h-[30px] rounded-lg bg-bg">
           + New assignment
@@ -292,10 +310,12 @@ function DayAssignmentsPanel({ day }: { day: OverviewDay }) {
         <Link
           key={a._id}
           href={`/admin/assignments/${a._id}`}
-          className="grid grid-cols-[minmax(0,1fr)_88px_80px] items-center gap-2 rounded-xl bg-bg px-3 py-[9px] text-sm text-ink no-underline hover:bg-sf2"
+          className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-xl bg-bg px-3 py-[9px] text-sm text-ink no-underline hover:bg-sf2 md:grid-cols-[minmax(0,1fr)_88px_80px]"
         >
           <b className="truncate font-bold">{a.title}</b>
-          <span className="text-ink3">{a.type === "guided" ? "guided" : "open-ended"}</span>
+          <span className="text-ink3 max-md:order-last max-md:col-span-2 max-md:text-[13px]">
+            {a.type === "guided" ? "guided" : "open-ended"}
+          </span>
           {a.status === "published" ? (
             <Pill tone="mint" className="px-2.5 font-semibold">Published</Pill>
           ) : (
@@ -324,7 +344,6 @@ function DaySchedulePanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
-  const published = day.assignments.filter((a) => a.status === "published").length;
   const dirty =
     !day.schedule ||
     date !== dateKey(day.schedule.lessonAt, timeZone) ||
@@ -370,12 +389,8 @@ function DaySchedulePanel({
       <p className="m-0 text-sm text-ink2">
         {day.schedule ? (
           <>
-            Turn-in closes{" "}
-            <b className="font-bold text-ink">
-              {formatWeekdayDateTime(day.schedule.turnInClosesAt, timeZone)}
-            </b>
-            . Changing the date moves turn-in for Day {day.order}’s {published} published{" "}
-            {published === 1 ? "assignment" : "assignments"}.
+            Students see this date on Day {day.order}. Changing it moves only the lesson; turn-in
+            never closes.
           </>
         ) : (
           <>Not scheduled for {formatYear(year)}. Students see “Not scheduled” until you save a date.</>

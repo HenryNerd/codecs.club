@@ -135,7 +135,7 @@ function PackagesForm({
       <div>
         <b className="text-[15px] font-bold">Packages</b>
         <p className="m-0 mt-0.5 text-[13px] text-ink2">
-          Most lessons only need what’s built into Python. Add a package when your teacher asks for one.
+          Most lessons only need what’s built into Python. Add a package when a lesson asks for one.
         </p>
       </div>
       {packages.length > 0 ? (

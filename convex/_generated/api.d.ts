@@ -23,6 +23,7 @@ import type * as classes from "../classes.js";
 import type * as classroomLayouts from "../classroomLayouts.js";
 import type * as http from "../http.js";
 import type * as lib_access from "../lib/access.js";
+import type * as lib_adminNames from "../lib/adminNames.js";
 import type * as lib_assistanceAccess from "../lib/assistanceAccess.js";
 import type * as lib_changes from "../lib/changes.js";
 import type * as lib_classes from "../lib/classes.js";
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   classroomLayouts: typeof classroomLayouts;
   http: typeof http;
   "lib/access": typeof lib_access;
+  "lib/adminNames": typeof lib_adminNames;
   "lib/assistanceAccess": typeof lib_assistanceAccess;
   "lib/changes": typeof lib_changes;
   "lib/classes": typeof lib_classes;

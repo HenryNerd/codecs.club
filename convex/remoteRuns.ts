@@ -1,3 +1,4 @@
+import { firstName } from "./lib/adminNames";
 import { v } from "convex/values";
 import { mutation, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -35,7 +36,7 @@ export const start = mutation({
       await ctx.db.patch("workspaces", workspace._id, { latestVersion: number });
     }
     const expiresAt = now + 30_000;
-    const id = await ctx.db.insert("remoteRuns", { workspaceId: workspace._id, versionId: versionId!, actorId: userId, actorName: admin.displayName, key: args.key, entry: args.entry, packages: workspace.packages ?? [], status: "running", output: "", outputTruncated: false, stopRequested: false, startedAt: now, updatedAt: now, expiresAt });
+    const id = await ctx.db.insert("remoteRuns", { workspaceId: workspace._id, versionId: versionId!, actorId: userId, actorName: firstName(admin.displayName), key: args.key, entry: args.entry, packages: workspace.packages ?? [], status: "running", output: "", outputTruncated: false, stopRequested: false, startedAt: now, updatedAt: now, expiresAt });
     await recordAdminChange(ctx, { actorId: userId, table: "remoteRuns", recordId: id, summary: `${admin.displayName} ran saved student work`, after: { workspaceId: workspace._id, versionId, entry: args.entry, executor: "teacher browser" } });
     await ctx.scheduler.runAt(expiresAt, internal.remoteRuns.expire, { id });
     return { run: (await ctx.db.get("remoteRuns", id))!, files: snapshot(files) };
